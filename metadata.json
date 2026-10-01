@@ -1,0 +1,6 @@
+{
+  "name": "本地 AI 工具平台",
+  "description": "集对话增强、AI 小说创作流水线、深度研究引擎、知识素材库于一体的本地 AI 智能体工作台",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

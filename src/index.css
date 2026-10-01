@@ -1,0 +1,138 @@
+@import "tailwindcss";
+
+@layer base {
+  :root,
+  [data-theme="dark"] {
+    --apple-bg: #131314; /* Gemini Obsidian Dark */
+    --apple-sidebar: #18191a;
+    --apple-surface: #1e1f20; /* Gemini Surface */
+    --apple-surface-elevated: #282a2c;
+    --apple-subtle: #242628;
+    --apple-border: rgba(255, 255, 255, 0.08);
+    --apple-border-strong: rgba(255, 255, 255, 0.16);
+    --apple-separator: rgba(255, 255, 255, 0.06);
+    --apple-text-primary: #e3e3e3;
+    --apple-text-secondary: #c4c7c5;
+    --apple-text-tertiary: #8e918f;
+    --apple-accent: #4285f4;
+    --apple-accent-hover: #1a73e8;
+    --apple-accent-subtle: rgba(66, 133, 244, 0.14);
+    --gemini-gradient: linear-gradient(135deg, #4285f4 0%, #9b72cb 50%, #d96570 100%);
+    --gemini-sparkle: #9b72cb;
+    --apple-green: #34a853;
+    --apple-orange: #fbbc04;
+    --apple-red: #ea4335;
+    --apple-purple: #9b72cb;
+    --apple-indigo: #4285f4;
+    --apple-glass: rgba(19, 19, 20, 0.85);
+    --apple-sidebar-glass: rgba(24, 25, 26, 0.9);
+  }
+
+  [data-theme="light"] {
+    --apple-bg: #f8f9fa; /* Gemini Light */
+    --apple-sidebar: #f0f4f9;
+    --apple-surface: #ffffff;
+    --apple-surface-elevated: #ffffff;
+    --apple-subtle: #edf2fa;
+    --apple-border: rgba(0, 0, 0, 0.08);
+    --apple-border-strong: rgba(0, 0, 0, 0.16);
+    --apple-separator: rgba(0, 0, 0, 0.06);
+    --apple-text-primary: #1f1f1f;
+    --apple-text-secondary: #444746;
+    --apple-text-tertiary: #747775;
+    --apple-accent: #1a73e8;
+    --apple-accent-hover: #1557d0;
+    --apple-accent-subtle: rgba(26, 115, 232, 0.1);
+    --gemini-gradient: linear-gradient(135deg, #1a73e8 0%, #8e24aa 50%, #d93025 100%);
+    --gemini-sparkle: #8e24aa;
+    --apple-green: #1e8e3e;
+    --apple-orange: #f29900;
+    --apple-red: #d93025;
+    --apple-purple: #9334e6;
+    --apple-indigo: #1a73e8;
+    --apple-glass: rgba(248, 249, 250, 0.85);
+    --apple-sidebar-glass: rgba(240, 244, 249, 0.9);
+  }
+
+  [data-theme="sepia"] {
+    --apple-bg: #f6efe2;
+    --apple-sidebar: #ece3d3;
+    --apple-surface: #fbf7ee;
+    --apple-surface-elevated: #ffffff;
+    --apple-subtle: #e5dac6;
+    --apple-border: rgba(94, 76, 52, 0.12);
+    --apple-border-strong: rgba(94, 76, 52, 0.22);
+    --apple-separator: rgba(94, 76, 52, 0.08);
+    --apple-text-primary: #2c251e;
+    --apple-text-secondary: #6b5c4d;
+    --apple-text-tertiary: #8c7b69;
+    --apple-accent: #b25e00;
+    --apple-accent-hover: #944e00;
+    --apple-accent-subtle: rgba(178, 94, 0, 0.12);
+    --gemini-gradient: linear-gradient(135deg, #b25e00 0%, #805ad5 50%, #c53030 100%);
+    --gemini-sparkle: #805ad5;
+    --apple-green: #348e38;
+    --apple-orange: #d97706;
+    --apple-red: #c53030;
+    --apple-purple: #805ad5;
+    --apple-indigo: #4c51bf;
+    --apple-glass: rgba(246, 239, 226, 0.85);
+    --apple-sidebar-glass: rgba(236, 227, 211, 0.9);
+  }
+
+  body {
+    background-color: var(--apple-bg);
+    color: var(--apple-text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Google Sans", "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+    user-select: none;
+  }
+}
+
+/* Gemini & Apple Ultra-Thin Translucent Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--apple-border-strong);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--apple-text-tertiary);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+/* Gemini Gradient Text Utility */
+.gemini-gradient-text {
+  background: var(--gemini-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gemini-sparkle-glow {
+  box-shadow: 0 0 25px rgba(155, 114, 203, 0.35);
+}
+
+/* Selection */
+::selection {
+  background-color: var(--apple-accent-subtle);
+  color: var(--apple-text-primary);
+}
+
+/* Focus ring */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--apple-accent);
+  outline-offset: 1px;
+}
