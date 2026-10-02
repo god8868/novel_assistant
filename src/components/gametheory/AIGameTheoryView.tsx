@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Swords, 
-  ShieldAlert, 
   Play, 
   Pause, 
   RotateCcw, 
@@ -39,137 +38,155 @@ import {
   Target,
   Flag,
   Crosshair,
-  Compass,
   AlertTriangle,
   Handshake,
-  Download
+  Download,
+  ChevronDown,
+  X,
+  UserPlus
 } from 'lucide-react';
 import { AppleMarkdown } from '../chat/AppleMarkdown.tsx';
 
-export type PresetKey = 'prisoners' | 'oligopoly' | 'arms_race' | 'webnovel';
-export type InfoMode = 'complete' | 'incomplete';
+export type GameMode = 'matrix' | 'debate' | 'red_blue' | 'coalition';
+export type ScenarioPresetKey = 'agi_align' | 'silicon_supply' | 'hft_squeeze' | 'carbon_quota' | 'trolley_ethics';
 
-export interface PayoffMatrix {
-  R: [number, number]; // Cooperate, Cooperate
-  S: [number, number]; // Cooperate, Defect
-  T: [number, number]; // Defect, Cooperate
-  P: [number, number]; // Defect, Defect
+export interface GameScenario {
+  key: ScenarioPresetKey;
+  mode: GameMode;
+  topic: string;
+  leftTitle: string;
+  rightTitle: string;
+  payoffCC: [number, number];
+  payoffCD: [number, number];
+  payoffDC: [number, number];
+  payoffDD: [number, number];
+  insights: string;
 }
 
-export interface PresetScenario {
-  key: PresetKey;
-  title: string;
-  subtitle: string;
-  alphaName: string;
-  betaName: string;
-  actionA1: string;
-  actionA2: string;
-  actionB1: string;
-  actionB2: string;
-  payoff: PayoffMatrix;
-  spne: string;
-  insight: string;
-  coopRates: number[];
-}
-
-const PRESET_SCENARIOS: Record<PresetKey, PresetScenario> = {
-  prisoners: {
-    key: 'prisoners',
-    title: '重复囚徒困境与针锋相对 (Tit-for-Tat)',
-    subtitle: '经典长线合作博弈 · 贴现衰减平衡',
-    alphaName: 'Alpha 方 (我方)',
-    betaName: 'Beta 方 (对手)',
-    actionA1: '合作 (Cooperate)',
-    actionA2: '背叛 (Defect)',
-    actionB1: '合作 (C)',
-    actionB2: '背叛 (D)',
-    payoff: {
-      R: [3.0, 3.0],
-      S: [0.0, 5.0],
-      T: [5.0, 0.0],
-      P: [1.0, 1.0]
-    },
-    spne: '(Cooperate, Cooperate)',
-    insight: '当前对局属于无限重复博弈。当贴现因子 γ > 0.5 时，基于无名氏定理 (Folk Theorem)，双方维持合作可构成长期子博弈完美纳什均衡。',
-    coopRates: [0.5, 0.58, 0.68, 0.76, 0.82, 0.85, 0.88, 0.88]
+const CURATED_SCENARIOS: Record<ScenarioPresetKey, GameScenario> = {
+  agi_align: {
+    key: 'agi_align',
+    mode: 'debate',
+    topic: 'AGI 超级对齐与安全围栏：递归自我改良下的人类最终否决权',
+    leftTitle: '正方：开源协同与多方自愈抗体',
+    rightTitle: '反方：封闭沙盒与强力硬件熔断',
+    payoffCC: [4.5, 4.5],
+    payoffCD: [1.2, 5.5],
+    payoffDC: [5.5, 1.2],
+    payoffDD: [2.0, 2.0],
+    insights: '完全对齐策略在长期重复博弈中构成超演化稳定态（ESS）。利用多模态对齐监督可降低背离概率。'
   },
-  oligopoly: {
-    key: 'oligopoly',
-    title: '寡头价格战 (Bertrand-Cournot)',
-    subtitle: '商业定价对抗与边际成本博弈',
-    alphaName: '算力公司 A',
-    betaName: '算力公司 B',
-    actionA1: '高定价 ($35/M)',
-    actionA2: '降价战 ($18/M)',
-    actionB1: '高定价 ($35)',
-    actionB2: '价格战 ($18)',
-    payoff: {
-      R: [4.5, 4.5],
-      S: [0.8, 6.2],
-      T: [6.2, 0.8],
-      P: [1.5, 1.5]
-    },
-    spne: '错位差异化定价',
-    insight: 'Bertrand 悖论揭示同质化价格战将驱使超额利润归零。推演建议引入服务生态锁客与转换成本 (Switching Cost)，突破价格战陷阱。',
-    coopRates: [0.8, 0.65, 0.42, 0.35, 0.48, 0.58, 0.62, 0.65]
+  silicon_supply: {
+    key: 'silicon_supply',
+    mode: 'coalition',
+    topic: '全球半导体先进制程供应链同盟：Shapley 价值再分配与核心稳定性',
+    leftTitle: '核心研发联盟 (Fabless)',
+    rightTitle: '代工制造同盟 (Foundry)',
+    payoffCC: [5.0, 5.0],
+    payoffCD: [0.8, 6.5],
+    payoffDC: [6.5, 0.8],
+    payoffDD: [1.5, 1.5],
+    insights: '研发与制造两方同盟的沙普利分配指数分别为 0.38 与 0.32。高贴现因子促使同盟处于最优分配核。'
   },
-  arms_race: {
-    key: 'arms_race',
-    title: '地缘威慑与边缘策略 (Brinkmanship)',
-    subtitle: '非零和危局与极限施压博弈',
-    alphaName: '主导联盟 Alpha',
-    betaName: '挑战大国 Beta',
-    actionA1: '条约克制',
-    actionA2: '高超音速扩军',
-    actionB1: '条约签署',
-    actionB2: '扩军部署',
-    payoff: {
-      R: [5.0, 5.0],
-      S: [-2.0, 7.5],
-      T: [7.5, -2.0],
-      P: [-5.0, -5.0]
-    },
-    spne: '相互保证毁灭 (MAD) 混合策略',
-    insight: '双方陷入安全困境 (Security Dilemma)。单方面裁军将遭受致命劣势 (-2.0)，扩军为各自主导策略，导致系统跌入双输冷战。',
-    coopRates: [0.7, 0.62, 0.50, 0.40, 0.42, 0.45, 0.48, 0.50]
+  hft_squeeze: {
+    key: 'hft_squeeze',
+    mode: 'matrix',
+    topic: '高频量化金融流动性围剿：做市挂单深度 vs 零和滑点狙击',
+    leftTitle: '做市流动性提供方 (MM)',
+    rightTitle: '算法狙击套利方 (HFT)',
+    payoffCC: [3.5, 3.5],
+    payoffCD: [0.2, 5.8],
+    payoffDC: [5.8, 0.2],
+    payoffDD: [1.0, 1.0],
+    insights: '做市方通过宽报价维持生存空间，狙击方利用滑点优势单边掠夺。长期博弈倾向于混和策略纳什均衡。'
   },
-  webnovel: {
-    key: 'webnovel',
-    title: '网文智斗：底牌反制与背刺',
-    subtitle: '主角隐匿底牌 vs 反派多疑试探',
-    alphaName: '主角沈妄 (扮猪吃虎)',
-    betaName: '老祖反派 (老谋深算)',
-    actionA1: '隐匿境界底牌',
-    actionA2: '暴起全力斩杀',
-    actionB1: '试探虚实',
-    actionB2: '祭出镇派杀招',
-    payoff: {
-      R: [6.0, 3.0],
-      S: [1.0, 7.0],
-      T: [8.5, -4.0],
-      P: [0.0, 0.0]
-    },
-    spne: '三层假死欺骗 + 绝地反制',
-    insight: '此场景为不完全信息动态信号博弈 (Signaling Game)。主角通过释放“重伤不支”的虚假劣质信号，引诱反派过早翻开所有底牌，反制胜率在第 8 轮达到 98.4% 爽点峰值。',
-    coopRates: [0.3, 0.42, 0.55, 0.68, 0.78, 0.88, 0.94, 0.98]
+  carbon_quota: {
+    key: 'carbon_quota',
+    mode: 'matrix',
+    topic: '碳排放权跨期配额博弈：清洁能源投资贴现 vs 购买罚单搭便车',
+    leftTitle: '绿色减排先发方',
+    rightTitle: '传统高碳渐进方',
+    payoffCC: [4.0, 4.0],
+    payoffCD: [0.5, 6.0],
+    payoffDC: [6.0, 0.5],
+    payoffDD: [1.8, 1.8],
+    insights: '如果环保罚单处罚额度低于清洁投资折现率，传统高碳渐进方会具有搭便车占优动机。'
+  },
+  trolley_ethics: {
+    key: 'trolley_ethics',
+    mode: 'debate',
+    topic: '自动驾驶极限电车难题道德委员会：边际功利主义 vs 严格义务论',
+    leftTitle: '功利派：总体伤亡最小化',
+    rightTitle: '道义派：不可剥夺优先权',
+    payoffCC: [4.2, 4.2],
+    payoffCD: [1.0, 5.2],
+    payoffDC: [5.2, 1.0],
+    payoffDD: [1.5, 1.5],
+    insights: '边际功利与义务法学说处于长期认知博弈状态。安全合规审查需基于多目标决策边界完成折衷。'
   }
 };
 
-export const AIGameTheoryView: React.FC<{ onSaveToMaterial?: (title: string, body: string) => void }> = ({ onSaveToMaterial }) => {
-  const [activePresetKey, setActivePresetKey] = useState<PresetKey>('prisoners');
-  const [infoMode, setInfoMode] = useState<InfoMode>('complete');
-  const [isRunningSim, setIsRunningSim] = useState(false);
+export interface AgentRosterItem {
+  id: string;
+  name: string;
+  camp: 'left' | 'right' | 'neutral';
+  model: string;
+  points: number;
+  strategy: string;
+  avatarText?: string;
+}
 
-  // Payoff Values
-  const activeScenario = PRESET_SCENARIOS[activePresetKey];
-  const [temptationT, setTemptationT] = useState(activeScenario.payoff.T[0]);
-  const [rewardR, setRewardR] = useState(activeScenario.payoff.R[0]);
+export const AIGameTheoryView: React.FC<{ onSaveToMaterial?: (title: string, body: string) => void }> = ({ onSaveToMaterial }) => {
+  // Scenario, Mode, Topic States
+  const [selectedScenarioKey, setSelectedScenarioKey] = useState<ScenarioPresetKey>('agi_align');
+  const [gameMode, setGameMode] = useState<GameMode>('matrix');
+  const [topicText, setTopicText] = useState(CURATED_SCENARIOS.agi_align.topic);
+  const [isInspectorOpen, setIsInspectorOpen] = useState(true);
+
+  // Playback Control States
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isTurbo, setIsTurbo] = useState(false);
+  const [currentRound, setCurrentRound] = useState(0);
+  const [maxRounds] = useState(16);
+  const [momentum, setMomentum] = useState(50); // 0 to 100
+
+  // Fallacies Counters
+  const [fallacies, setFallacies] = useState({ strawman: 1, slippery: 0, dilemma: 2 });
+
+  // Custom Studio States
+  const [customTopic, setCustomTopic] = useState('高维跨国主权数字货币清算体系：去中心化算法信任 vs 传统多边央行储备联盟');
+  const [customLeftCamp, setCustomLeftCamp] = useState('自主清算技术共识派');
+  const [customRightCamp, setCustomRightCamp] = useState('主权法定受控监管派');
+
+  // Multi-Agent Seats
+  const [agents, setAgents] = useState<AgentRosterItem[]>([
+    { id: 'alpha', name: 'Agent Alpha (立论先锋)', camp: 'left', model: 'Claude 3.7 Sonnet', points: 120, strategy: 'Tit-for-Tat' },
+    { id: 'beta', name: 'Agent Beta (逻辑破壁者)', camp: 'right', model: 'DeepSeek-R1', points: 115, strategy: 'Socratic Inquisitor' },
+    { id: 'gamma', name: 'Agent Gamma (实证博弈家)', camp: 'left', model: 'GPT-5 Ultra', points: 105, strategy: 'Bayesian Prober' },
+    { id: 'delta', name: 'Agent Delta (红队渗透者)', camp: 'right', model: 'Gemini 2.5 Pro', points: 110, strategy: 'Exploit Minimizer' }
+  ]);
+
+  // Telemetry Metrics
+  const [telemetry, setTelemetry] = useState({
+    bayes: 0.824,
+    regret: 0.038,
+    entropy: 1.42
+  });
 
   // Hyperparameters
-  const [discountGamma, setDiscountGamma] = useState(0.92);
-  const [cpuct, setCpuct] = useState(1.414);
-  const [tauNoise, setTauNoise] = useState(0.18);
-  const [inductionDepth, setInductionDepth] = useState(6);
+  const [kLevel, setKLevel] = useState(3);
+  const [discountDelta, setDiscountDelta] = useState(0.92);
+  const [noiseEpsilon, setNoiseEpsilon] = useState(0.04);
+  const [logitLambda, setLogitLambda] = useState(4.50);
+  const [bluffPercentage, setBluffPercentage] = useState(25);
+
+  const [activeModal, setActiveModal] = useState<'add_agent' | 'studio' | null>(null);
+
+  // New Agent Form
+  const [newAgentName, setNewAgentName] = useState('Agent Epsilon');
+  const [newAgentCamp, setNewAgentCamp] = useState<'left' | 'right' | 'neutral'>('left');
+  const [newAgentModel, setNewAgentModel] = useState('Claude 3.7 Sonnet (Anthropic)');
+  const [newAgentPersona, setNewAgentPersona] = useState('Tit-for-Tat');
 
   // Toast
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -179,20 +196,200 @@ export const AIGameTheoryView: React.FC<{ onSaveToMaterial?: (title: string, bod
     setTimeout(() => setToastMsg(null), 2500);
   };
 
-  const handleRunSimulation = () => {
-    if (isRunningSim) return;
-    setIsRunningSim(true);
-    showToast('✦ MCTS 100,000 次蒙特卡洛随机树剪枝并行推演中...');
+  const activeScenario = CURATED_SCENARIOS[selectedScenarioKey] || CURATED_SCENARIOS.agi_align;
 
-    setTimeout(() => {
-      setIsRunningSim(false);
-      showToast('博弈沙盘纳什均衡已成功收敛！');
-    }, 750);
+  // Real-time calculation path for Bezier curves
+  const phasePortraitPath = useMemo(() => {
+    const startX = 10;
+    const startY = 40;
+    const endX = 20 + (currentRound / maxRounds) * 120;
+    const endY = 40 - (momentum / 100) * 30;
+    return `M ${startX} ${startY} Q 40 25, 70 30 T ${endX} ${endY}`;
+  }, [currentRound, momentum, maxRounds]);
+
+  const activePayoff = useMemo(() => {
+    return {
+      CC: activeScenario.payoffCC,
+      CD: activeScenario.payoffCD,
+      DC: activeScenario.payoffDC,
+      DD: activeScenario.payoffDD
+    };
+  }, [activeScenario]);
+
+  // Feed / History items
+  const [feedLogs, setFeedGrid] = useState<Array<{ id: string; type: 'system' | 'agent' | 'gavel' | 'shock'; title?: string; text: string; agent?: AgentRosterItem; round?: number }>>([
+    {
+      id: 'welcome',
+      type: 'system',
+      text: '欢迎进入 Synapse AI 博弈与认知对抗实验室 Pro。系统已挂载经典纳什矩阵、议会辩论、红蓝对抗与多人联盟合作引擎。各智能体已完成递归认知展开。点击上方“开始演算”或“单步步进”启动认知交锋。'
+    }
+  ]);
+
+  // Playback timers
+  useEffect(() => {
+    let timer: any = null;
+    if (isPlaying) {
+      const speed = isTurbo ? 400 : 2000;
+      timer = setInterval(() => {
+        handleStepTurn();
+      }, speed);
+    }
+    return () => clearInterval(timer);
+  }, [isPlaying, isTurbo, currentRound, momentum]);
+
+  // Trigger Exogenous Shock
+  const handleInjectShock = () => {
+    const shocks = [
+      '【外生黑天鹅】突发国际监管条例更新：所有背叛行为的贴现惩罚翻倍，背叛收益强制扣减 40%！',
+      '【极端流动性抽离】外部环境发生系统性扰动，双方信息信道延迟增加 300ms，失手噪声 ε 激增至 0.18！',
+      '【零日漏洞穿透】第三方底层依赖库暴露高危反序列化缺陷，所有私有保留价格被公开发布至公共信道！'
+    ];
+    const text = shocks[Math.floor(Math.random() * shocks.length)];
+
+    setFeedGrid(prev => [...prev, {
+      id: `shock-${Date.now()}`,
+      type: 'shock',
+      text
+    }]);
+
+    setMomentum(prev => Math.min(85, Math.max(15, prev + (Math.random() * 20 - 10))));
+    showToast('已成功注入外生黑天鹅冲击！');
   };
 
+  // Step Turn Logic
+  const handleStepTurn = () => {
+    if (currentRound >= maxRounds) {
+      setIsPlaying(false);
+      triggerFinalVerdict();
+      return;
+    }
+
+    const nextRound = currentRound + 1;
+    setCurrentRound(nextRound);
+
+    const activeAgent = agents[(nextRound - 1) % agents.length];
+
+    // Compute payoff momentum
+    const drift = Math.random() * 12 - 6;
+    let nextMom = momentum;
+    if (activeAgent.camp === 'left') {
+      nextMom = Math.min(90, Math.max(10, momentum + drift + 2.5));
+    } else {
+      nextMom = Math.min(90, Math.max(10, momentum + drift - 2.5));
+    }
+    setMomentum(nextMom);
+
+    // Modify agents scoring
+    setAgents(prev => prev.map(a => a.id === activeAgent.id ? { ...a, points: a.points + 5 } : a));
+
+    // Dynamic random fallacies
+    if (Math.random() > 0.7) {
+      setFallacies(prev => ({
+        ...prev,
+        strawman: prev.strawman + 1
+      }));
+    }
+
+    // Append feed turn card
+    const turnArguments = [
+      '依据复杂演化博弈公理：当贴现因子 δ > 0.85 时，利他合作策略在长序列博弈中构成严格演化稳定策略（ESS）。',
+      '对手的归谬论证犯了经典“假两难选择”；未考虑到我们能够通过形式化智能合约引入去中心化仲裁保证金。',
+      '我方重申：闭源集中监管必然导致不可逆的单点故障风险。开源抗体机制才能在黑天鹅事件中保障整个生态的反脆弱性。',
+      '反方的实证数据存在样本选择偏差，完全忽略了零日漏洞在黑市信息不对称状态下的快速传染扩散效率。'
+    ];
+    const pickedArg = turnArguments[Math.floor(Math.random() * turnArguments.length)];
+
+    setFeedGrid(prev => [...prev, {
+      id: `turn-${nextRound}-${Date.now()}`,
+      type: 'agent',
+      round: nextRound,
+      agent: activeAgent,
+      text: pickedArg
+    }]);
+
+    // Update telemetry metrics randomly
+    setTelemetry({
+      bayes: parseFloat((0.75 + Math.random() * 0.20).toFixed(3)),
+      regret: parseFloat((0.01 + Math.random() * 0.05).toFixed(3)),
+      entropy: parseFloat((1.20 + Math.random() * 0.35).toFixed(2))
+    });
+  };
+
+  // Human God-Mode Intervene
+  const handleInjectIntervention = (val: string) => {
+    if (!val.trim()) return;
+
+    setFeedGrid(prev => [...prev, {
+      id: `gavel-${Date.now()}`,
+      type: 'gavel',
+      text: val
+    }]);
+
+    showToast('人类法官席指令已分发至博弈总线！');
+  };
+
+  // Final Verdict Trigger
+  const triggerFinalVerdict = () => {
+    const winner = momentum >= 50 ? '正方 / 蓝方 / 合作阵营' : '反方 / 红方 / 竞争阵营';
+    showToast('已达到最大博弈轮次，主审陪审团出具裁定白皮书');
+
+    setFeedGrid(prev => [...prev, {
+      id: `verdict-${Date.now()}`,
+      type: 'gavel',
+      text: `【终局裁定】历经 ${maxRounds} 轮高阶心智博弈，${winner} 在抵御外部黑天鹅扰动及维持跨期帕累托效率上建立了优势支配策略。`
+    }]);
+  };
+
+  // Reset Arena
+  const handleResetArena = () => {
+    setIsPlaying(false);
+    setCurrentRound(0);
+    setMomentum(50);
+    setFeedGrid([
+      {
+        id: 'reset',
+        type: 'system',
+        text: `推演环境已重置。议题：${topicText}。点击“开始演算”或“单步步进”开始新一轮认知对决。`
+      }
+    ]);
+    setAgents(DEFAULT_MEMBERS.map((m, idx) => ({
+      id: m.id,
+      name: m.name,
+      camp: m.color === 'rose' ? 'right' : 'left',
+      model: m.model,
+      points: 120 - idx * 5,
+      strategy: m.stance
+    })));
+    showToast('博弈沙盒已复位！');
+  };
+
+  // Custom Studio
+  const handleApplyCustomScenario = () => {
+    setTopicText(customTopic);
+    setActiveModal(null);
+    handleResetArena();
+    showToast('自定义博弈议题与目标函数已成功装配！');
+  };
+
+  // Add Agent Seat
+  const handleConfirmAddAgent = () => {
+    const newAg: AgentRosterItem = {
+      id: `agent-${Date.now()}`,
+      name: newAgentName,
+      camp: newAgentCamp,
+      model: newAgentModel,
+      points: 100,
+      strategy: newAgentPersona
+    };
+    setAgents(prev => [...prev, newAg]);
+    setActiveModal(null);
+    showToast(`已成功注入新席位 [${newAgentName}]`);
+  };
+
+  // Export Report
   const handleExportReport = () => {
-    const title = `博弈推演研报: ${activeScenario.title}`;
-    const body = `纳什均衡推演报告:\n- 场景: ${activeScenario.title}\n- 子博弈完美均衡 (SPNE): ${activeScenario.spne}\n- 决策建议: ${activeScenario.insight}\n- 贴现因子 γ: ${discountGamma} · MCTS 探索常数 c_puct: ${cpuct}`;
+    const title = `博弈推演研报: ${activeScenario.topic.slice(0, 15)}...`;
+    const body = `纳什均衡及攻防演化报告:\n- 议题: ${topicText}\n- 正方立场: ${activeScenario.leftTitle}\n- 反方立场: ${activeScenario.rightTitle}\n- K-Level: Level ${kLevel}\n- 贴现率 δ: ${discountDelta}`;
     
     showToast('已导出纳什均衡推演研报，并保存至素材库！');
     if (onSaveToMaterial) {
@@ -201,11 +398,11 @@ export const AIGameTheoryView: React.FC<{ onSaveToMaterial?: (title: string, bod
   };
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden bg-[#0d0d11] text-slate-100 font-sans select-none relative">
-      {/* Dynamic Toast */}
+    <div className="flex flex-col h-full w-full overflow-hidden bg-[#0a0c10] text-[#f5f5f7] font-apple select-none relative">
+      {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full bg-[#1c1c22]/95 border border-white/20 text-white text-xs font-semibold shadow-2xl flex items-center space-x-2 backdrop-blur-2xl animate-in fade-in zoom-in-95">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full bg-[#1c1d22]/95 border border-white/20 text-xs font-semibold shadow-2xl flex items-center space-x-2 backdrop-blur-2xl animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-[#30d158]" />
           <span>{toastMsg}</span>
         </div>
       )}
@@ -214,334 +411,539 @@ export const AIGameTheoryView: React.FC<{ onSaveToMaterial?: (title: string, bod
       <div className="fixed top-2.5 left-1/2 -translate-x-1/2 z-40 transition-all duration-300">
         <div className="px-4 py-1.5 rounded-full bg-black/90 backdrop-blur-2xl text-white text-xs font-mono shadow-2xl flex items-center space-x-3.5 border border-white/15">
           <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500" />
           </span>
           <div className="flex items-center space-x-1.5 font-sans">
-            <span className="font-bold text-white/90">
-              {isRunningSim ? '超算 MCTS 剪枝中...' : '均衡已收敛'}
-            </span>
-            <span className="text-[10px] text-zinc-400">· 纳什收敛度 99.84%</span>
+            <span className="font-bold text-white/90">纳什逼近: 99.2%</span>
+            <span className="text-[10px] text-zinc-400">· 动态均衡已收敛</span>
           </div>
           <div className="h-3 w-px bg-white/20" />
           <div className="flex items-center space-x-2 text-[10px] text-zinc-400 font-mono">
-            <span>MCTS 100k 采样</span>
+            <span>K-Level {kLevel}</span>
             <span>·</span>
-            <span className="text-purple-400 font-bold">Apple M5 ANE (342 GFLOPS)</span>
+            <span className="text-purple-400 font-bold">Recursive Decision</span>
           </div>
         </div>
       </div>
 
-      {/* TOP HEADER */}
-      <header className="h-14 px-6 bg-[#16161a]/80 backdrop-blur-2xl border-b border-white/10 flex items-center justify-between shrink-0 z-30 select-none">
+      {/* TOP SYSTEM MENU BAR */}
+      <header className="h-11 px-4 flex items-center justify-between text-xs border-b border-white/10 bg-black/40 backdrop-blur-xl shrink-0">
         <div className="flex items-center space-x-3.5">
-          <div className="flex items-center space-x-1.5">
-            <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
-            <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
-            <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
-          </div>
-          <div className="h-4 w-px bg-white/10" />
-
           <div className="flex items-center space-x-2">
-            <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-blue-500 flex items-center justify-center shadow-md">
-              <Crosshair className="w-4 h-4 text-white" />
+            <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
+            <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
+            <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
+          </div>
+
+          <div className="flex items-center space-x-2 font-medium">
+            <div className="w-5 h-5 rounded-lg bg-gradient-to-tr from-cyan-500 via-blue-600 to-purple-600 flex items-center justify-center text-white shadow-sm">
+              <Swords className="w-3.5 h-3.5 text-white" />
             </div>
-            <div>
-              <span className="text-xs font-bold text-white tracking-tight">Nash Arena Pro</span>
-              <span className="text-[9px] ml-1.5 px-1.5 py-0.5 rounded-full font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                MCTS 4.0
-              </span>
-            </div>
+            <span className="font-semibold tracking-tight text-[13px]">Synapse Arena Pro</span>
+            <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-white/10 opacity-70">v7.2 Quantum</span>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center space-x-2 text-xs">
-          <button
-            onClick={() => showToast('已将复位博弈沙盘与初始收益矩阵')}
-            className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold transition"
-          >
-            重置沙盘
-          </button>
+        {/* Center: Four Segmented Tactical Mode Pills */}
+        <div className="flex items-center p-0.5 rounded-full bg-white/[0.08] border border-white/10 shadow-inner text-xs font-medium">
+          {[
+            { id: 'matrix', label: '博弈矩阵与均衡', color: 'bg-cyan-500' },
+            { id: 'debate', label: '议会制辩论模式', color: 'bg-purple-500' },
+            { id: 'red_blue', label: '红蓝攻防对抗', color: 'bg-rose-500' },
+            { id: 'coalition', label: '多人联盟演化', color: 'bg-emerald-500' }
+          ].map(m => (
+            <button
+              key={m.id}
+              onClick={() => {
+                setGameMode(m.id as GameMode);
+                showToast(`已切换至【${m.label}】`);
+              }}
+              className={`px-3.5 py-1 rounded-full transition flex items-center space-x-1.5 ${
+                gameMode === m.id ? 'bg-white/20 text-white shadow-sm font-semibold' : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${m.color}`} />
+              <span>{m.label}</span>
+            </button>
+          ))}
+        </div>
 
+        <div className="flex items-center space-x-2">
           <button
-            onClick={handleRunSimulation}
-            disabled={isRunningSim}
-            className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md transition flex items-center space-x-1.5 disabled:opacity-50"
+            onClick={() => setIsInspectorOpen(p => !p)}
+            className="p-1.5 opacity-60 hover:opacity-100 hover:bg-white/10 rounded-xl transition"
           >
-            <Play className={`w-3.5 h-3.5 fill-current ${isRunningSim ? 'animate-spin' : ''}`} />
-            <span>{isRunningSim ? '正在剪枝推演...' : '执行推演 (⌘R)'}</span>
+            <Sliders className="w-4 h-4 text-purple-400" />
           </button>
         </div>
       </header>
 
-      {/* MAIN WORKSPACE */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* 1. LEFT SIDEBAR: SCENARIOS & PERSONAS */}
-        <aside className="w-80 shrink-0 flex flex-col bg-[#121216]/90 border-r border-white/10 backdrop-blur-2xl z-20 select-none">
-          <div className="p-3.5 border-b border-white/10 space-y-2 shrink-0">
-            <div className="flex justify-between text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-              <span>博弈场景与仿真沙盘</span>
-              <span className="text-purple-400 font-mono">4 范式</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-1 p-0.5 rounded-xl bg-black/40 border border-white/10 text-[11px] font-bold">
-              <button
-                onClick={() => { setInfoMode('complete'); showToast('已切换至完全信息博弈模式'); }}
-                className={`py-1 rounded-lg transition ${infoMode === 'complete' ? 'bg-white/20 text-white shadow-xs' : 'text-zinc-400 hover:text-white'}`}
-              >
-                完全信息博弈
-              </button>
-              <button
-                onClick={() => { setInfoMode('incomplete'); showToast('已切换至不完全信息/贝叶斯博弈'); }}
-                className={`py-1 rounded-lg transition ${infoMode === 'incomplete' ? 'bg-white/20 text-white shadow-xs' : 'text-zinc-400 hover:text-white'}`}
-              >
-                贝叶斯不完全
-              </button>
-            </div>
+      {/* SCENARIO & PLAYBACK CONTROL STRIP */}
+      <div className="px-6 py-2.5 border-b border-white/10 bg-black/30 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0 z-20">
+        <div className="flex items-center space-x-3 flex-1 min-w-[340px]">
+          <span className="text-zinc-400 font-bold uppercase tracking-wider text-[11px] shrink-0">博弈议题:</span>
+          <div className="relative flex-1 max-w-xl">
+            <input 
+              type="text" 
+              value={topicText}
+              onChange={e => setTopicText(e.target.value)}
+              className="w-full px-3 py-1.5 rounded-xl bg-black/20 border border-white/10 hover:border-white/20 font-medium text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none transition"
+            />
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 text-xs">
-            {Object.keys(PRESET_SCENARIOS).map(key => {
-              const sc = PRESET_SCENARIOS[key as PresetKey];
-              const isSelected = key === activePresetKey;
-              return (
-                <div
-                  key={key}
-                  onClick={() => {
-                    setActivePresetKey(key as PresetKey);
-                    setTemptationT(sc.payoff.T[0]);
-                    setRewardR(sc.payoff.R[0]);
-                    showToast(`已加载场景《${sc.title}》`);
-                  }}
-                  className={`p-3 rounded-2xl border cursor-pointer transition space-y-1.5 ${
-                    isSelected ? 'bg-blue-600/20 border-blue-500/50 text-white shadow-md' : 'bg-white/5 border-white/5 hover:bg-white/10 text-zinc-400'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-white text-[12px] truncate">{sc.title}</span>
-                  </div>
-                  <p className="text-[10px] text-zinc-400 line-clamp-2 leading-relaxed">{sc.subtitle}</p>
-                </div>
-              );
-            })}
-          </div>
+          <select
+            value={selectedScenarioKey}
+            onChange={e => {
+              const k = e.target.value as ScenarioPresetKey;
+              setSelectedScenarioKey(k);
+              setTopicText(CURATED_SCENARIOS[k].topic);
+              showToast(`已成功载入预设：${CURATED_SCENARIOS[k].topic.slice(0, 15)}...`);
+            }}
+            className="bg-[#1c1c24] border border-white/10 rounded-xl px-2 py-1 text-white text-xs cursor-pointer"
+          >
+            <option value="agi_align">1. AGI 超级对齐与安全围栏</option>
+            <option value="silicon_supply">2. 全球半导体先进制程供应链同盟</option>
+            <option value="hft_squeeze">3. 高频量化金融流动性围剿</option>
+            <option value="carbon_quota">4. 碳排放权跨期配额博弈</option>
+            <option value="trolley_ethics">5. 自动驾驶极限电车难题</option>
+          </select>
 
-          {/* Players Personas */}
-          <div className="p-3 border-t border-white/10 bg-black/30 space-y-2 text-xs">
-            <div className="flex justify-between font-bold text-zinc-400 text-[11px]">
-              <span>博弈主体角色设定</span>
-              <span className="text-teal-300 font-mono">3 方介入</span>
-            </div>
+          <button
+            onClick={() => setActiveModal('studio')}
+            className="px-2.5 py-1.5 bg-white/10 hover:bg-white/15 rounded-xl transition flex items-center space-x-1"
+          >
+            <Settings2 className="w-3.5 h-3.5 text-blue-400" />
+            <span>定制工作室</span>
+          </button>
+        </div>
 
-            <div className="space-y-1.5">
-              <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 flex justify-between items-center text-xs">
-                <span className="font-bold text-white">{activeScenario.alphaName}</span>
-                <span className="text-[9px] font-mono text-blue-400 bg-blue-500/20 px-1.5 py-0.5 rounded">自适应胜率最大化</span>
-              </div>
-              <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 flex justify-between items-center text-xs">
-                <span className="font-bold text-white">{activeScenario.betaName}</span>
-                <span className="text-[9px] font-mono text-purple-300 bg-purple-500/20 px-1.5 py-0.5 rounded">理性惩罚者 (Tit-for-Tat)</span>
-              </div>
-            </div>
-          </div>
-        </aside>
+        {/* Playback Controls */}
+        <div className="flex items-center space-x-2.5">
+          <div className="flex items-center p-1 rounded-2xl bg-black/25 border border-white/10">
+            <button
+              onClick={() => setIsPlaying(p => !p)}
+              className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium flex items-center space-x-1.5 transition active:scale-95 shadow-md"
+            >
+              {isPlaying ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+              <span>{isPlaying ? '暂停演算' : '开始演算'}</span>
+            </button>
 
-        {/* 2. CENTER MAIN WORKSPACE */}
-        <section className="flex-1 flex flex-col h-full overflow-y-auto bg-[#0d0d11] p-6 space-y-6 select-none">
-          {/* Top Row: Matrix & Replicator Dynamics */}
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-            {/* Module 1: Payoff Matrix Table */}
-            <div className="xl:col-span-5 p-5 rounded-3xl bg-[#181920]/80 border border-white/10 space-y-4 shadow-2xl">
-              <div className="flex justify-between items-center border-b border-white/10 pb-3">
-                <div>
-                  <span className="text-[10px] font-mono text-blue-400 font-bold uppercase">Normal-form Game Matrix</span>
-                  <h3 className="text-xs font-bold text-white">收益支付矩阵 (Payoff Matrix)</h3>
-                </div>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">
-                  存在纯策略纳什均衡
-                </span>
-              </div>
+            <button
+              onClick={handleStepTurn}
+              className="px-3 py-1.5 rounded-xl hover:bg-white/10 font-medium flex items-center space-x-1 transition active:scale-95"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+              <span>单步步进</span>
+            </button>
 
-              {/* 2x2 Table */}
-              <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40 text-xs">
-                <div className="grid grid-cols-3 text-center border-b border-white/10 font-bold">
-                  <div className="p-2.5 text-zinc-500 bg-white/5">Alpha \ Beta</div>
-                  <div className="p-2.5 text-purple-300 bg-purple-500/10 truncate">{activeScenario.actionB1}</div>
-                  <div className="p-2.5 text-purple-300 bg-purple-500/10 truncate">{activeScenario.actionB2}</div>
-                </div>
-
-                <div className="grid grid-cols-3 text-center border-b border-white/10">
-                  <div className="p-3 text-blue-400 font-bold bg-blue-500/10 flex items-center justify-center truncate">
-                    {activeScenario.actionA1}
-                  </div>
-                  <div className="p-3 hover:bg-white/10 transition cursor-pointer">
-                    <div className="text-[10px] text-zinc-500">相互合作 (R)</div>
-                    <div className="font-mono text-sm font-bold text-emerald-400">({rewardR}, {rewardR})</div>
-                  </div>
-                  <div className="p-3 hover:bg-white/10 transition cursor-pointer">
-                    <div className="text-[10px] text-zinc-500">我受骗 (S, T)</div>
-                    <div className="font-mono text-sm font-bold text-rose-400">({activeScenario.payoff.S[0]}, {temptationT})</div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 text-center">
-                  <div className="p-3 text-blue-400 font-bold bg-blue-500/10 flex items-center justify-center truncate">
-                    {activeScenario.actionA2}
-                  </div>
-                  <div className="p-3 hover:bg-white/10 transition cursor-pointer">
-                    <div className="text-[10px] text-zinc-500">诱惑背叛 (T, S)</div>
-                    <div className="font-mono text-sm font-bold text-amber-400">({temptationT}, {activeScenario.payoff.S[0]})</div>
-                  </div>
-                  <div className="p-3 bg-purple-500/20 border-2 border-purple-500/40 relative">
-                    <span className="absolute top-1 right-1 px-1 rounded bg-purple-500 text-white text-[8px] font-mono font-bold">Nash</span>
-                    <div className="text-[10px] text-zinc-300">双双背叛 (P)</div>
-                    <div className="font-mono text-sm font-bold text-zinc-200">({activeScenario.payoff.P[0]}, {activeScenario.payoff.P[1]})</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Payoff Sliders */}
-              <div className="grid grid-cols-2 gap-3 text-xs pt-1">
-                <div className="p-2.5 rounded-xl bg-white/5 space-y-1">
-                  <div className="flex justify-between font-mono text-[11px]">
-                    <span className="text-zinc-400">背叛诱惑 T:</span>
-                    <span className="text-amber-400 font-bold">{temptationT}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="3.5"
-                    max="10.0"
-                    step="0.5"
-                    value={temptationT}
-                    onChange={e => setTemptationT(Number(e.target.value))}
-                    className="w-full accent-amber-400 h-1 bg-white/10 rounded cursor-pointer"
-                  />
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-white/5 space-y-1">
-                  <div className="flex justify-between font-mono text-[11px]">
-                    <span className="text-zinc-400">合作收益 R:</span>
-                    <span className="text-emerald-400 font-bold">{rewardR}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1.0"
-                    max="6.0"
-                    step="0.5"
-                    value={rewardR}
-                    onChange={e => setRewardR(Number(e.target.value))}
-                    className="w-full accent-emerald-400 h-1 bg-white/10 rounded cursor-pointer"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Module 2: Evolutionary Trajectory Visualization */}
-            <div className="xl:col-span-7 p-5 rounded-3xl bg-[#181920]/80 border border-white/10 space-y-3 shadow-2xl flex flex-col justify-between">
-              <div className="flex justify-between items-center border-b border-white/10 pb-3">
-                <div>
-                  <span className="text-[10px] font-mono text-purple-400 font-bold uppercase">Replicator Dynamics</span>
-                  <h3 className="text-xs font-bold text-white">演化博弈动态相图与收敛曲线</h3>
-                </div>
-                <span className="text-xs font-mono text-teal-300 font-bold">2,500 轮演化</span>
-              </div>
-
-              {/* Evolutionary SVG Curves */}
-              <div className="h-44 w-full relative flex items-end pb-4 pt-2">
-                <svg className="w-full h-full overflow-visible" viewBox="0 0 600 140" preserveAspectRatio="none">
-                  <polyline
-                    fill="none"
-                    stroke="#0a84ff"
-                    strokeWidth="3"
-                    points={activeScenario.coopRates.map((val, i) => {
-                      const x = (i / (activeScenario.coopRates.length - 1)) * 600;
-                      const y = 140 - val * 120;
-                      return `${x},${y}`;
-                    }).join(' ')}
-                  />
-                </svg>
-              </div>
-
-              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-white/10 text-center text-xs font-mono">
-                <div><div className="text-[10px] text-zinc-500">博弈轮次</div><div className="font-bold text-white">2,500 轮</div></div>
-                <div><div className="text-[10px] text-zinc-500">稳定合作率 (ESS)</div><div className="font-bold text-emerald-400">84.2%</div></div>
-                <div><div className="text-[10px] text-zinc-500">帕累托改善</div><div className="font-bold text-teal-300">+42.6%</div></div>
-                <div><div className="text-[10px] text-zinc-500">博弈熵</div><div className="font-bold text-amber-400">0.142</div></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Module 3: Subgame Perfect Nash Equilibrium AI Briefing */}
-          <div className="p-5 rounded-3xl bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-amber-500/10 border border-white/15 space-y-3 shadow-2xl">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-2">
-                <Sparkles className="w-4 h-4 text-purple-400" />
-                <h3 className="text-xs font-bold text-white">Apple Intelligence 最优应对决策 (Best Response)</h3>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 font-bold">
-                SPNE: {activeScenario.spne}
-              </span>
-            </div>
-
-            <p className="text-xs text-zinc-300 leading-relaxed font-sans">
-              {activeScenario.insight}
-            </p>
-          </div>
-        </section>
-
-        {/* 3. RIGHT INSPECTOR PANEL */}
-        <aside className="w-80 shrink-0 bg-[#121216]/90 border-l border-white/10 p-4 space-y-5 text-xs overflow-y-auto z-20 select-none">
-          <div className="flex justify-between items-center border-b border-white/10 pb-3 font-bold text-white">
-            <span className="flex items-center space-x-1.5">
-              <Sliders className="w-4 h-4 text-teal-300" />
-              <span>博弈超参数控制台</span>
-            </span>
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-1.5 p-3 rounded-xl bg-white/5 border border-white/5">
-              <div className="flex justify-between font-mono text-[11px]">
-                <span className="text-zinc-400">未来贴现因子 (Gamma γ):</span>
-                <span className="text-blue-400 font-bold">{discountGamma}</span>
-              </div>
-              <input
-                type="range"
-                min="0.10"
-                max="0.99"
-                step="0.01"
-                value={discountGamma}
-                onChange={e => setDiscountGamma(Number(e.target.value))}
-                className="w-full accent-blue-500 h-1 bg-white/10 rounded cursor-pointer"
-              />
-            </div>
-
-            <div className="space-y-1.5 p-3 rounded-xl bg-white/5 border border-white/5">
-              <div className="flex justify-between font-mono text-[11px]">
-                <span className="text-zinc-400">MCTS 探索常数 (c_puct):</span>
-                <span className="text-purple-300 font-bold">{cpuct}</span>
-              </div>
-              <input
-                type="range"
-                min="0.5"
-                max="3.0"
-                step="0.05"
-                value={cpuct}
-                onChange={e => setCpuct(Number(e.target.value))}
-                className="w-full accent-purple-400 h-1 bg-white/10 rounded cursor-pointer"
-              />
-            </div>
+            <button
+              onClick={() => setIsTurbo(t => !t)}
+              className={`px-2.5 py-1.5 rounded-xl opacity-60 hover:opacity-100 hover:bg-white/10 font-mono transition text-[11px] ${isTurbo ? 'text-blue-400 font-bold' : ''}`}
+            >
+              {isTurbo ? '10x 极速' : '1x 拟真'}
+            </button>
           </div>
 
           <button
-            onClick={handleExportReport}
-            className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition flex items-center justify-center space-x-1.5 text-xs"
+            onClick={handleInjectShock}
+            className="px-3.5 py-1.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 font-bold transition flex items-center space-x-1.5 active:scale-95"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>导出纳什均衡推演研报</span>
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span>注入黑天鹅冲击</span>
           </button>
-        </aside>
+
+          <button onClick={handleResetArena} className="p-2 opacity-60 hover:opacity-100 hover:bg-white/10 rounded-2xl transition border border-white/5">
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
+
+      {/* MAIN WORKSPACE TRI-SPLIT */}
+      <div className="flex-1 flex overflow-hidden relative">
+        
+        {/* LEFT COLUMN: AGENT ROSTER & STATUS */}
+        <aside className="w-80 border-r border-white/10 bg-[#121216]/90 backdrop-blur-2xl flex flex-col shrink-0 select-none z-20">
+          <div className="p-4 border-b border-white/10 space-y-2">
+            <div className="flex justify-between items-center text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+              <span>阵营动量天平</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10">轮次: {currentRound} / {maxRounds}</span>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+              <div className="flex justify-between items-center text-xs font-semibold">
+                <span className="text-cyan-400">{activeScenario.leftTitle.split('：')[0] || '正方/蓝队'}</span>
+                <span className="text-rose-400">{activeScenario.rightTitle.split('：')[0] || '反方/红队'}</span>
+              </div>
+
+              {/* Progress dynamic bars */}
+              <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden flex relative">
+                <div style={{ width: `${momentum}%` }} className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 rounded-full transition-all duration-500" />
+                <div style={{ width: `${100 - momentum}%` }} className="h-full bg-gradient-to-l from-rose-600 to-amber-500 rounded-full transition-all duration-500" />
+              </div>
+
+              <div className="flex justify-between text-[11px] font-mono opacity-70">
+                <span>影响力: {momentum.toFixed(1)}%</span>
+                <span>影响力: {(100 - momentum).toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Online seats */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-zinc-400 font-bold uppercase">参弈智能体席位</span>
+              <button onClick={() => setActiveModal('add_agent')} className="text-blue-400 hover:underline text-[11px] flex items-center space-x-1">
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>+ 注入新智能体</span>
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {agents.map(ag => (
+                <div key={ag.id} className="p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-xs">
+                        {ag.avatarText}
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-white">{ag.name}</div>
+                        <div className="text-[10px] text-zinc-400 font-mono">{ag.model}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-bold text-white">{ag.points}</span>
+                      <span className="text-[9px] text-zinc-500 block">pts</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        {/* CENTER MAIN BATTLEGROUND */}
+        <main className="flex-1 flex flex-col relative h-full overflow-hidden">
+          {/* Top Visual HUD Area */}
+          <div className="p-4 border-b border-white/10 bg-[#121216]/80 backdrop-blur-xl shrink-0 z-20">
+            {/* 1. MATRIX GRID */}
+            {gameMode === 'matrix' && (
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex-1 space-y-1">
+                  <span className="text-xs font-bold text-white flex items-center space-x-1.5">
+                    <Activity className="w-4 h-4 text-cyan-400" />
+                    <span>广义纳什均衡矩阵 (Payoff Tensor)</span>
+                  </span>
+                  <p className="text-[11px] text-zinc-400">标定值：(左阵营收益, 右阵营收益)。青色高亮为当期落入解空间。</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="p-2.5 rounded-2xl bg-[#1c1c24] border border-cyan-500/30 w-36 text-center">
+                    <div className="text-[10px] text-zinc-500">α: 合作 | β: 合作</div>
+                    <div className="text-sm font-bold text-emerald-400">({activePayoff.CC[0]}, {activePayoff.CC[1]})</div>
+                  </div>
+                  <div className="p-2.5 rounded-2xl bg-[#1c1c24] border border-white/5 w-36 text-center">
+                    <div className="text-[10px] text-zinc-500">α: 合作 | β: 背叛</div>
+                    <div className="text-sm font-bold text-rose-400">({activePayoff.CD[0]}, {activePayoff.CD[1]})</div>
+                  </div>
+                </div>
+
+                {/* SVG Phase Portrait */}
+                <div className="w-48 h-24 rounded-2xl bg-black/40 border border-white/10 p-2 relative flex flex-col justify-between">
+                  <span className="text-[9px] text-zinc-500 font-mono">收益相空间轨迹 (Phase Portrait)</span>
+                  <svg className="w-full h-16" viewBox="0 0 160 50">
+                    <path d={phasePortraitPath} fill="none" stroke="#2997ff" strokeWidth="2" />
+                    <circle cx="130" cy="18" r="3.5" fill="#30d158" className="animate-pulse" />
+                  </svg>
+                </div>
+              </div>
+            )}
+
+            {/* 2. DEBATE VIEW */}
+            {gameMode === 'debate' && (
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-sm">
+                    ⚖️
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">议会制辩论环节: <span className="text-purple-400 font-mono">环节三: 自由质询与归谬对攻</span></div>
+                    <div className="text-[11px] text-zinc-400">仲裁法庭实时扫描：论证逻辑链破绽与形式化谬误。</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 text-xs font-mono">
+                  <span className="px-2.5 py-1 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400">稻草人谬误: {fallacies.strawman}</span>
+                  <span className="px-2.5 py-1 rounded-xl bg-orange-500/15 border border-orange-500/30 text-orange-400">假两难困境: {fallacies.dilemma}</span>
+                </div>
+              </div>
+            )}
+
+            {/* 3. RED VS BLUE VIEW */}
+            {gameMode === 'red_blue' && (
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold text-sm">
+                    🛡️
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">红蓝对抗攻防曲面: <span className="text-rose-400 font-mono">越狱注入 vs 深度沙盒记忆隔离</span></div>
+                    <div className="text-[11px] text-zinc-400">攻击向量渗透度: 18.2% | 防御自愈收敛比: 81.8%</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 4. COALITION GRAPH */}
+            {gameMode === 'coalition' && (
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
+                    🌐
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">大联盟互信网络拓扑 (Grand Coalition Graph)</div>
+                    <div className="text-[11px] text-zinc-400">动态边粗细代表协同亲密度；节点直径与 Shapley 权重成正比。</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Interactive Battle Feed */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {feedLogs.map(item => (
+              <div
+                key={item.id}
+                className={`p-4 rounded-3xl bg-[#16161c] border space-y-2.5 ${
+                  item.type === 'shock' ? 'border-amber-500/40 bg-amber-500/[0.05]' : 'border-white/10'
+                }`}
+              >
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-bold text-white">{item.agent?.name || '系统'}</span>
+                    {item.round && <span className="text-[10px] text-zinc-400 font-mono">[#轮次 {item.round}]</span>}
+                  </div>
+                </div>
+                <p className="text-xs leading-relaxed text-zinc-300">“{item.text}”</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Human Intervention Input Bar */}
+          <div className="p-3.5 border-t border-white/10 bg-black/40 flex items-center space-x-3 shrink-0">
+            <div className="w-8 h-8 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold shadow-md">
+              法
+            </div>
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="作为【人类主审裁决官 / God Mode】输入指令并按 Enter 派发干预决策..."
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    handleInjectIntervention(e.currentTarget.value);
+                    e.currentTarget.value = '';
+                  }
+                }}
+                className="w-full px-4 py-2 rounded-2xl bg-black/20 border border-white/10 text-xs text-white focus:outline-none"
+              />
+            </div>
+          </div>
+        </main>
+
+        {/* RIGHT INSPECTOR PANEL: HYPERPARAMETERS */}
+        {isInspectorOpen && (
+          <aside className="w-84 bg-[#121216]/95 border-l border-white/10 flex flex-col shrink-0 select-none z-20">
+            <div className="p-3.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-white">
+              <span className="flex items-center space-x-1.5">
+                <Sliders className="w-4 h-4 text-purple-400" />
+                <span>博弈论与决策超参数</span>
+              </span>
+              <button onClick={() => setIsInspectorOpen(false)} className="text-zinc-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center font-bold">
+                  <span>心智预判深度 (K-Level)</span>
+                  <span className="font-mono text-cyan-400">Level {kLevel}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="5"
+                  value={kLevel}
+                  onChange={e => setKLevel(parseInt(e.target.value))}
+                  className="w-full accent-cyan-400 cursor-pointer"
+                />
+              </div>
+
+              <div className="space-y-1.5 pt-2 border-t border-white/10">
+                <div className="flex justify-between items-center font-bold">
+                  <span>跨期贴现因子 (Discount δ)</span>
+                  <span className="font-mono text-purple-300">{discountDelta}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="0.99"
+                  step="0.01"
+                  value={discountDelta}
+                  onChange={e => setDiscountDelta(parseFloat(e.target.value))}
+                  className="w-full accent-purple-500 cursor-pointer"
+                />
+              </div>
+
+              <div className="space-y-1.5 pt-2 border-t border-white/10">
+                <div className="flex justify-between items-center font-bold">
+                  <span>颤抖之手扰动 (Noise ε)</span>
+                  <span className="font-mono text-orange-400">{noiseEpsilon}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.0"
+                  max="0.20"
+                  step="0.01"
+                  value={noiseEpsilon}
+                  onChange={e => setNoiseEpsilon(parseFloat(e.target.value))}
+                  className="w-full accent-orange-500 cursor-pointer"
+                />
+              </div>
+
+              <div className="space-y-1.5 pt-2 border-t border-white/10">
+                <div className="flex justify-between items-center font-bold">
+                  <span>有限理性系数 (Logit λ)</span>
+                  <span className="font-mono text-emerald-400">{logitLambda.toFixed(2)}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="10.0"
+                  step="0.25"
+                  value={logitLambda}
+                  onChange={e => setLogitLambda(parseFloat(e.target.value))}
+                  className="w-full accent-emerald-500 cursor-pointer"
+                />
+              </div>
+
+              {/* Cognitive Telemetry Box */}
+              <div className="pt-3 border-t border-white/10 space-y-2">
+                <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">认知遥测与反事实后悔 (CFR)</span>
+                <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1.5 font-mono text-[11px]">
+                  <div className="flex justify-between">
+                    <span>贝叶斯后验 P(Coop|Hist):</span>
+                    <span className="text-emerald-400">{telemetry.bayes}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>累计后悔值 R+:</span>
+                    <span className="text-amber-400">{telemetry.regret}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>策略香农熵 H(Strategy):</span>
+                    <span className="text-cyan-400">{telemetry.entropy} bit</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3.5 border-t border-white/10 bg-black/20">
+              <button
+                onClick={handleExportReport}
+                className="w-full py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-xl shadow-md"
+              >
+                应用并导出博弈研报
+              </button>
+            </div>
+          </aside>
+        )}
+      </div>
+
+      {/* STUDIO MODAL */}
+      {activeModal === 'studio' && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4 text-xs animate-in fade-in">
+          <div className="bg-[#181820] border border-white/20 w-full max-w-lg rounded-2xl p-5 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-white/10 pb-3 font-bold text-white text-sm">
+              <span>高级博弈场景与自定义议题工作室</span>
+              <button onClick={() => setActiveModal(null)} className="text-zinc-400 hover:text-white"><X className="w-4 h-4" /></button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-zinc-400 font-bold block mb-1">博弈论题背景与争议核心</label>
+                <textarea value={customTopic} onChange={e => setCustomTopic(e.target.value)} rows={2} className="w-full p-2 bg-black/40 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500 resize-none font-medium" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-zinc-400 font-bold block mb-1">左翼 / 正方立场标签</label>
+                  <input type="text" value={customLeftCamp} onChange={e => setCustomLeftCamp(e.target.value)} className="w-full p-2 bg-black/40 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="text-zinc-400 font-bold block mb-1">右翼 / 反方立场标签</label>
+                  <input type="text" value={customRightCamp} onChange={e => setCustomRightCamp(e.target.value)} className="w-full p-2 bg-black/40 border border-white/10 rounded-xl text-white outline-none focus:border-blue-500" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-2 border-t border-white/10">
+              <button onClick={() => setActiveModal(null)} className="px-4 py-1.5 rounded-xl bg-white/10 text-white font-bold">取消</button>
+              <button onClick={handleApplyCustomScenario} className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold">应用新场景</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADD AGENT MODAL */}
+      {activeModal === 'add_agent' && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4 text-xs animate-in fade-in">
+          <div className="bg-[#181820] border border-white/20 w-full max-w-md rounded-2xl p-5 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-white/10 pb-3 font-bold text-white text-sm">
+              <span>注入新智能体博弈席位</span>
+              <button onClick={() => setActiveModal(null)} className="text-zinc-400 hover:text-white"><X className="w-4 h-4" /></button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-zinc-400 font-bold block mb-1">席位代号与称谓</label>
+                <input type="text" value={newAgentName} onChange={e => setNewAgentName(e.target.value)} className="w-full p-2 bg-black/40 border border-white/10 rounded-xl text-white outline-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-zinc-400 font-bold block mb-1">归属阵营</label>
+                  <select value={newAgentCamp} onChange={e => setNewAgentCamp(e.target.value as any)} className="w-full p-2 bg-black/40 border border-white/10 rounded-xl text-white outline-none">
+                    <option value="left">左翼 / 正方立场</option>
+                    <option value="right">右翼 / 反方立场</option>
+                    <option value="neutral">中立仲裁员席位</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-zinc-400 font-bold block mb-1">博弈心理风格</label>
+                  <select value={newAgentPersona} onChange={e => setNewAgentPersona(e.target.value)} className="w-full p-2 bg-black/40 border border-white/10 rounded-xl text-white outline-none">
+                    <option value="Tit-for-Tat">以牙还牙且宽容 (Tit-for-Tat)</option>
+                    <option value="Grim Trigger">冷酷严厉触发 (Grim Trigger)</option>
+                    <option value="Socratic Inquisitor">苏格拉底诘问者</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-2 border-t border-white/10">
+              <button onClick={() => setActiveModal(null)} className="px-4 py-1.5 rounded-xl bg-white/10 text-white font-bold">取消</button>
+              <button onClick={handleConfirmAddAgent} className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold">确认就席</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+const DEFAULT_MEMBERS = [
+  { id: 'alpha', name: 'Agent Alpha', model: 'Claude 3.7 Sonnet', stance: 'Tit-for-Tat', color: 'blue' },
+  { id: 'beta', name: 'Agent Beta', model: 'DeepSeek-R1', stance: 'Socratic Inquisitor', color: 'rose' },
+  { id: 'gamma', name: 'Agent Gamma', model: 'GPT-5 Ultra', stance: 'Bayesian Prober', color: 'emerald' },
+  { id: 'delta', name: 'Agent Delta', model: 'Gemini 2.5 Pro', stance: 'Exploit Minimizer', color: 'purple' }
+];

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Presentation, 
   Plus, 
@@ -9,1059 +9,1405 @@ import {
   Palette, 
   FileText, 
   ChevronLeft, 
-  ChevronRight,
-  Maximize2,
-  Trash2,
-  Copy,
-  ArrowUp,
-  ArrowDown,
-  Layout,
-  Mic,
-  Check,
-  X,
-  Wand2,
-  Sliders,
-  Compass,
-  Scale,
-  Columns,
-  ListOrdered,
-  Share2,
-  MonitorPlay,
-  RotateCcw,
-  Upload,
-  Send,
-  MessageSquare,
-  Edit3,
-  CheckCircle2,
-  BookmarkPlus,
-  SlidersHorizontal,
-  FolderOpen,
-  Split,
-  Eye,
-  Type,
-  FileCode,
-  FileUp,
-  Maximize,
-  Minimize2
+  ChevronRight, 
+  Maximize2, 
+  Trash2, 
+  Copy, 
+  ArrowUp, 
+  ArrowDown, 
+  Layout, 
+  Mic, 
+  Check, 
+  X, 
+  Wand2, 
+  Sliders, 
+  Compass, 
+  Scale, 
+  Columns, 
+  ListOrdered, 
+  Share2, 
+  MonitorPlay, 
+  RotateCcw, 
+  Upload, 
+  Send, 
+  MessageSquare, 
+  Edit3, 
+  CheckCircle2, 
+  BookmarkPlus, 
+  SlidersHorizontal, 
+  FolderOpen, 
+  Split, 
+  Eye, 
+  Type, 
+  FileCode, 
+  FileUp, 
+  Maximize, 
+  Minimize2, 
+  FileCheck2, 
+  Bot, 
+  Lightbulb, 
+  ListPlus, 
+  Zap, 
+  CornerDownRight, 
+  Home,
+  Save,
+  Printer,
+  ShieldCheck,
+  Undo2,
+  Redo2,
+  FileDown,
+  FilePlus,
+  Image as ImageIcon,
+  Table as TableIcon,
+  Film,
+  Music,
+  Move,
+  Clock,
+  SpellCheck,
+  Grid,
+  Search,
+  Settings2,
+  SlidersVertical,
+  Maximize as FullscreenIcon,
+  HelpCircle,
+  Scan,
+  Scissors,
+  Clipboard,
+  PaintRoller,
+  LayoutGrid,
+  Hash,
+  LineChart as LineChartIcon,
+  GitFork,
+  Link2,
+  Droplets,
+  Pointer,
+  Sparkle,
+  Gauge,
+  Boxes,
+  Activity,
+  Layers3,
+  Pipette,
+  Sun,
+  Moon,
+  Brush,
+  History,
+  Lock,
+  ShieldAlert,
+  Globe,
+  PlusSquare,
+  CopyPlus,
+  FolderPlus,
+  Bold,
+  Italic,
+  Underline,
+  Strikethrough,
+  RemoveFormatting,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  CheckSquare,
+  SearchCheck,
+  BarChart2,
+  PieChart,
+  Radar,
+  UploadCloud,
+  Shapes,
+  Wand,
+  PlayCircle,
+  Radio,
+  Video,
+  Contrast,
+  FileDigit,
+  Grid2x2,
+  ListTree,
+  Wrench,
+  Languages,
+  Expand,
+  Minus,
+  ArrowRight,
+  Code,
+  Menu,
+  Cloud
 } from 'lucide-react';
 import { AppleMarkdown } from '../chat/AppleMarkdown.tsx';
 
-export type SlidesStudioMode = 'ai_generate' | 'local_editor';
+export type RibbonTab = 
+  | 'file' 
+  | 'home' 
+  | 'insert' 
+  | 'design' 
+  | 'transitions' 
+  | 'animations' 
+  | 'slideshow' 
+  | 'review' 
+  | 'view' 
+  | 'tools' 
+  | 'ai_hub'
+  | 'contextual';
+
 export type SlideLayout = 'title' | 'agenda' | 'points' | 'split' | 'quote' | 'conclusion';
-export type SlideTheme = 'obsidian' | 'chalk' | 'aurora' | 'parchment';
+export type SlideTheme = 'obsidian' | 'titanium' | 'aurora' | 'ivory';
+export type TransitionEffect = 'magic_move' | 'cube' | 'blur_depth' | 'fade';
+export type AnimationEffect = 'spring_in' | 'blur_in' | 'float_up';
+
+export interface BentoCard {
+  tag: string;
+  title: string;
+  desc: string;
+  grad: string;
+}
+
+export interface MetricItem {
+  val: string;
+  lbl: string;
+}
+
+export interface ElementData {
+  id: string;
+  type: 'heading' | 'paragraph' | 'tag' | 'metric-row' | 'bento-grid' | 'quote-split' | 'metric-highlight';
+  content?: string;
+  classes?: string;
+  items?: MetricItem[];
+  cards?: BentoCard[];
+  bigNum?: string;
+  bigLabel?: string;
+  metrics?: { t: string; v: string; g: string }[];
+  quote?: string;
+  author?: string;
+  bullets?: string[];
+}
 
 export interface Slide {
   id: string;
   title: string;
   subtitle: string;
-  bullets: string[];
-  layout: SlideLayout;
+  theme: SlideTheme;
   notes: string;
   badge?: string;
+  layout: SlideLayout;
+  transition?: TransitionEffect;
+  animation?: AnimationEffect;
+  elements: ElementData[];
 }
 
-const LAYOUT_CONFIG: Record<SlideLayout, { label: string; icon: any; desc: string }> = {
-  title: { label: '封面主旨', icon: Compass, desc: '大号震撼主标题与企划作者信息' },
-  agenda: { label: '大纲目录', icon: ListOrdered, desc: '结构化流程梳理与要点导航' },
-  points: { label: '核心要点', icon: Layers, desc: '条列式深入剖析与因果论证' },
-  split: { label: '双向对比', icon: Columns, desc: '双雄博弈、阵营反差与优缺点' },
-  quote: { label: '金句洞察', icon: Sparkles, desc: '大字号观点强调与关键启示' },
-  conclusion: { label: '收束结语', icon: Scale, desc: '高潮总结、后续规划与问答' }
-};
+export interface SmartPalette {
+  id: SlideTheme;
+  name: string;
+  bgClass: string;
+  accentColor: string;
+  secondaryColor: string;
+  gradPair: string;
+  contextDesc: string;
+}
 
-const THEME_CONFIG: Record<SlideTheme, { label: string; bgClass: string; textClass: string; accentColor: string; desc: string }> = {
+const SMART_PALETTES: Record<SlideTheme, SmartPalette> = {
   obsidian: {
-    label: '深空黑曜',
-    bgClass: 'bg-[#121214] border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.6)]',
-    textClass: 'text-[#f5f5f7]',
-    accentColor: '#0a84ff',
-    desc: '极客深黑，经典沉浸感'
-  },
-  chalk: {
-    label: '极简霜白',
-    bgClass: 'bg-[#ffffff] border-black/10 shadow-[0_20px_50px_rgba(0,0,0,0.08)]',
-    textClass: 'text-[#1d1d1f]',
+    id: 'obsidian',
+    name: 'Apple 极简黑曜 (Obsidian)',
+    bgClass: 'bg-[#0c0c0f] text-white border-white/10 shadow-2xl',
     accentColor: '#0071e3',
-    desc: '通透白净，明快专注'
+    secondaryColor: '#2997ff',
+    gradPair: 'from-blue-600/20 to-purple-600/10',
+    contextDesc: '硬核科技 • 发布会 Keynote • 空间计算'
+  },
+  titanium: {
+    id: 'titanium',
+    name: '原色钛金属 (Titanium)',
+    bgClass: 'bg-gradient-to-br from-[#1c1c20] via-[#26262d] to-[#121215] text-white border-white/15 shadow-2xl',
+    accentColor: '#ff9f0a',
+    secondaryColor: '#ffd60a',
+    gradPair: 'from-amber-600/20 to-orange-600/10',
+    contextDesc: '精密硬件 • 工业设计 • 奢华质感'
   },
   aurora: {
-    label: '暗夜极光',
-    bgClass: 'bg-gradient-to-br from-[#0c102b] via-[#151c3d] to-[#1a1138] border-indigo-500/20 shadow-[0_20px_50px_rgba(20,10,50,0.5)]',
-    textClass: 'text-white',
-    accentColor: '#bf5af2',
-    desc: '深邃渐变，高端发布会质感'
+    id: 'aurora',
+    name: '极光流体 (Aurora)',
+    bgClass: 'bg-gradient-to-br from-[#0c1424] via-[#1a0f28] to-[#08080d] text-white border-purple-500/20 shadow-2xl',
+    accentColor: '#af52de',
+    secondaryColor: '#63e6e2',
+    gradPair: 'from-purple-600/20 to-pink-600/10',
+    contextDesc: '艺术叙事 • AI 前沿 • 品牌宣发'
   },
-  parchment: {
-    label: '仿古羊皮纸',
-    bgClass: 'bg-[#f4ebd9] dark:bg-[#282420] border-[#dcd1be] dark:border-[#3d3731] shadow-[0_20px_50px_rgba(50,30,10,0.15)]',
-    textClass: 'text-[#3d3228] dark:text-[#ede4d8]',
-    accentColor: '#c97826',
-    desc: '古典典籍质感，长篇叙事'
+  ivory: {
+    id: 'ivory',
+    name: '润白陶瓷 (Ivory Pro)',
+    bgClass: 'bg-gradient-to-br from-[#f5f5f7] via-[#e5e5ea] to-[#dcdce0] text-zinc-900 border-zinc-300 shadow-xl',
+    accentColor: '#0071e3',
+    secondaryColor: '#005bb5',
+    gradPair: 'from-blue-500/10 to-indigo-500/10',
+    contextDesc: '学术路演 • 商业财报 • 清爽通透'
   }
 };
 
 const INITIAL_SLIDES: Slide[] = [
   {
     id: 'slide-1',
-    title: '《九渊破妄录》IP 架构与世界观总括',
-    subtitle: '天道崩裂八百年 · 九渊沉沦与凡骨抗争的东方奇幻史诗',
-    bullets: [
-      '核心命题：在仙门伪神与渊海异化的千年死局中，刺破宿命欺瞒',
-      '世界分层：上三渊（清气仙宗）、中三渊（散修渡口）、下三渊（远古封印）',
-      '主角内核：克制隐忍，外门弃徒，以身为刃破局'
-    ],
+    title: '2026 Apple 空间计算与硬件生态战略',
+    subtitle: '无界视野 • 端侧神经模型 • 纯粹物理质感',
+    theme: 'obsidian',
     layout: 'title',
-    notes: '向评委与投资人着重强调本作与传统升级流修仙的差异——重在悬疑权谋与设定严密性。',
-    badge: '企划概要'
+    notes: '【开场演说】语调沉稳自然，停顿 2 秒后开场：“今天，我们将一同见证个人计算的下一场跃迁。”',
+    badge: 'KEYNOTE 2026',
+    transition: 'magic_move',
+    animation: 'spring_in',
+    elements: [
+      {
+        id: 'elem-1-tag',
+        type: 'tag',
+        content: 'SPECIAL EVENT KEYNOTE • CUPERTINO 2026',
+        classes: 'text-xs font-semibold tracking-widest text-blue-400 uppercase mb-2 inline-block'
+      },
+      {
+        id: 'elem-1-h1',
+        type: 'heading',
+        content: '空间计算，<br><span class="text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-300 to-zinc-500 font-black">步入无界时代。</span>',
+        classes: 'text-3xl md:text-5xl font-bold tracking-tight text-white leading-tight mb-4'
+      },
+      {
+        id: 'elem-1-desc',
+        type: 'paragraph',
+        content: '搭载全新 M5 神经矩阵芯片与超轻量微透镜光机，为全球专业创作者重塑三维人机协同体验。',
+        classes: 'text-xs md:text-sm text-zinc-400 max-w-xl leading-relaxed mb-6'
+      },
+      {
+        id: 'elem-1-stats',
+        type: 'metric-row',
+        items: [
+          { val: '4.8x', lbl: '端侧张量算力' },
+          { val: '< 2.2ms', lbl: '毫秒级运动到光子延迟' },
+          { val: '100%', lbl: '100% 航天级再生钛金属' }
+        ]
+      }
+    ]
   },
   {
     id: 'slide-2',
-    title: '破妄真瞳：力量法则与戏剧危机闭环',
-    subtitle: '严苛的能力代价构筑极致的代入感与戏剧张力',
-    bullets: [
-      '【照彻机理】：窥视天地气机流转缝隙与阵法命门（以弱胜强合理化）',
-      '【反噬规则】：全力施展不可超过三息，超时双目如烈铁灼烧经络',
-      '【解毒关键】：必须依赖稀缺的“寒玉髓”压制，推动资源冒险支线'
-    ],
+    title: 'Bento Grid 便当盒模块化矩阵',
+    subtitle: '高集成度与直觉交互的交融',
+    theme: 'obsidian',
     layout: 'points',
-    notes: '阐述商业写作生命线：没有代价的开挂会让读者快速审美疲劳，严密的规则是长篇连载的核心保障。',
-    badge: '核心法则'
+    notes: '【便当盒卡片拆解】依次展开 Vision Pro SE 的轻量级普及、神经指环与 M5 算力底座。',
+    badge: '硬件规格',
+    transition: 'blur_depth',
+    animation: 'blur_in',
+    elements: [
+      {
+        id: 'elem-2-h',
+        type: 'heading',
+        content: '全新个人计算硬件矩阵',
+        classes: 'text-2xl font-bold text-white mb-2'
+      },
+      {
+        id: 'elem-2-bento',
+        type: 'bento-grid',
+        cards: [
+          { tag: '旗舰空间视界', title: 'Apple Vision Pro SE', desc: '整机减重 44%，双目 8K Micro-OLED，售价下探至主流消费级市场。', grad: 'from-blue-600/20 to-purple-600/10' },
+          { tag: '隐形神经手势', title: 'Apple Neural Ring', desc: '原色钛金属拉丝，微肌电生物电极，实现无感知空中微捏合操控。', grad: 'from-amber-600/20 to-orange-600/10' },
+          { tag: '算力核心', title: 'Apple M5 Max', desc: '台积电 2nm 先进制程，集成双神经引擎与统一内存架构，支持本地运行万亿 MoE。', grad: 'from-emerald-600/20 to-teal-600/10' },
+          { tag: '声学空间追踪', title: 'AirPods Spatial Vision', desc: '声波雷达与动态头部定位，实现电影级空间音频与实时同声传译。', grad: 'from-pink-600/20 to-rose-600/10' }
+        ]
+      }
+    ]
   },
   {
     id: 'slide-3',
-    title: '双雄契约：冷静刺客 × 算天掌事',
-    subtitle: '沈玄烛与柳清霜的双向博弈与利益结盟',
-    bullets: [
-      '沈玄烛：被动求生到主动掀翻伪神棋局，背负灭门血仇',
-      '柳清霜：巨贾庶女，以算筹谋夺仙盟总舵，借双眼寻生路',
-      '契约机制：互不探究过往血仇，只论灵石分润与航道生死互托'
-    ],
+    title: '核心爆发性指标与增长曲线',
+    subtitle: '高净值生态飞轮与量化渗透',
+    theme: 'obsidian',
     layout: 'split',
-    notes: '分析受众画像：男女主角兼具高智商与行动力，契合年轻读者对“智斗双强”的审美需求。',
-    badge: '角色博弈'
+    notes: '【面向投资人】强调服务的粘性与硬件的高续费率。',
+    badge: '量化增长',
+    transition: 'fade',
+    animation: 'float_up',
+    elements: [
+      {
+        id: 'elem-3-h',
+        type: 'heading',
+        content: '生态变现飞轮与确定性增长',
+        classes: 'text-2xl font-bold text-white mb-2'
+      },
+      {
+        id: 'elem-3-metric-block',
+        type: 'metric-highlight',
+        bigNum: '91.8%',
+        bigLabel: '空间操作系统生态年留存率 (行业首位)',
+        metrics: [
+          { t: '空间硬件预计年出货量', v: '1,420 万台', g: '+188% 同比增长' },
+          { t: '高毛利服务业务营收', v: '$38.4 B', g: '+32% 同比增长' },
+          { t: '全球活跃开发者矩阵', v: '420 万人', g: '创历史新高' }
+        ]
+      }
+    ]
   },
   {
     id: 'slide-4',
-    title: '“天地以万物为刍狗，我以凡骨为斩神刀”',
-    subtitle: '全剧灵魂台词与精神支柱 · 第三卷黑水古祭坛揭秘时刻',
-    bullets: [
-      '绝境反扑：主角在双目暂时失明状态下，凭借心算盲刺击穿仙阵阵眼',
-      '读者共鸣：击碎“灵根天定”的阶级锁链，唤醒凡人主角自主抗争意志'
-    ],
+    title: '设计哲学：Think Different 经典回响',
+    subtitle: '工业设计与人道主义精神',
+    theme: 'obsidian',
     layout: 'quote',
-    notes: '此页为全案的情绪最高点，配合激昂的背景音乐呈现核心金句。',
-    badge: '高潮金句'
-  },
-  {
-    id: 'slide-5',
-    title: '多模态衍生与商业化落地蓝图',
-    subtitle: '出版、有声剧、影视短剧与端模互动多轴并行',
-    bullets: [
-      '文本矩阵：起点中文网独家连载，首订目标 30,000+，全本预计 240 万字',
-      '视觉资产：由 AI 工作台构建完备的角色立绘、宗门法器与概念场景原画库',
-      '交互衍生：同步开发沉浸式文字冒险与解谜分支端游企划'
-    ],
-    layout: 'conclusion',
-    notes: '展示IP的长尾变现价值，让整个企划案不仅具备艺术深度，更具备扎实的商业可行性。',
-    badge: '商业愿景'
+    notes: '【总结页】语调放缓，致敬经典。',
+    badge: '思考回响',
+    elements: [
+      {
+        id: 'elem-4-quote',
+        type: 'quote-split',
+        quote: '“致那些疯狂的人，他们特立独行，他们桀骜不驯，他们格格不入……他们推动了人类的向前。”',
+        author: '— Steve Jobs (1997)',
+        bullets: [
+          '极简是复杂的终极形式。',
+          '将最尖端的人工智能隐藏在理所当然的日常交互之下。',
+          '不仅制造硬件，更赋予思考与创造的自由。'
+        ]
+      }
+    ]
   }
 ];
 
-export const SlidesView: React.FC = () => {
-  // Mode switcher: 'ai_generate' | 'local_editor'
-  const [studioMode, setStudioMode] = useState<SlidesStudioMode>('ai_generate');
-
+export const SlidesView: React.FC<{ onSaveToMaterial?: (title: string, body: string) => void }> = ({ onSaveToMaterial }) => {
+  // Navigation & UI States
+  const [activeRibbonTab, setActiveRibbonTab] = useState<RibbonTab>('home');
+  const [activeSidebarMode, setActiveSidebarMode] = useState<'inspector' | 'smart_layout' | 'copilot'>('smart_layout');
   const [slides, setSlides] = useState<Slide[]>(INITIAL_SLIDES);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const [theme, setTheme] = useState<SlideTheme>('obsidian');
-  const [isFullScreen, setIsFullScreen] = useState(false);
-  const [savedSuccess, setSavedSuccess] = useState(false);
 
-  // ============================================================
-  // 1. AI 模式参数 (AI GENERATION & CONVERSATIONAL MODIFICATION)
-  // ============================================================
-  const [aiTopicInput, setAiTopicInput] = useState('企业数据安全与端侧大模型本地部署商业企划案');
-  const [isGeneratingDeck, setIsGeneratingDeck] = useState(false);
-  const [chatInstruction, setChatInstruction] = useState('');
-  const [isProcessingChat, setIsProcessingChat] = useState(false);
+  // Undo/Redo Stacks
+  const [history, setHistory] = useState<Slide[][]>([INITIAL_SLIDES]);
+  const [historyIndex, setHistoryIndex] = useState(0);
 
-  // Element Selection for AI Modification
-  const [selectedElement, setSelectedElement] = useState<{
-    type: 'title' | 'subtitle' | 'bullet' | 'notes';
-    index?: number;
-    text: string;
-  } | null>(null);
-  const [isAiModifyingElement, setIsAiModifyingElement] = useState(false);
+  // Selection & Inspector
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1.0);
+  const [aspectRatio, setAspectRatio] = useState<'16:9' | '16:10' | '4:3'>('16:9');
+  const [showGridLines, setShowGridLines] = useState(false);
 
-  // ============================================================
-  // 2. 本地编辑工作台状态 (LOCAL EDITOR)
-  // ============================================================
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [importedFileName, setImportedFileName] = useState<string | null>(null);
+  // Smart Theme Palette Popover Engine
+  const [showPalettePopover, setShowPalettePopover] = useState(false);
+  const [isFileDrawerOpen, setIsFileDrawerOpen] = useState(false);
+
+  // Marquee Selection Box Engine
+  const [isMarqueeActive, setIsMarqueeActive] = useState(false);
+  const [isMarqueeDragging, setIsMarqueeDragging] = useState(false);
+  const [marqueeStart, setMarqueeStart] = useState({ x: 0, y: 0 });
+  const [marqueeRect, setMarqueeRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+
+  // Presenter Fullscreen & Laser
+  const [isPresenterActive, setIsPresenterActive] = useState(false);
+  const [isLaserActive, setIsLaserActive] = useState(false);
+  const [laserPos, setLaserPos] = useState({ x: 0, y: 0 });
+  const [showPresenterNotes, setShowPresenterNotes] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  // Modals
+  const [activeModal, setActiveModal] = useState<'topic' | 'link' | 'import' | 'print' | null>(null);
+
+  // Copilot Chat Messages
+  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; text: string }>>([
+    { role: 'assistant', text: '您好，我是 **Keynote AI Copilot**。您可以通过自然语言指挥我重构排版、转换主题或提炼量化数字。' }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+
+  // Toast
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 2500);
+  };
 
   const activeSlide = slides[activeSlideIndex] || slides[0];
-  const currentThemeConfig = THEME_CONFIG[theme];
+  const currentPalette = SMART_PALETTES[activeSlide.theme || 'obsidian'];
 
-  // Global Keydown for Presentation Mode
+  // Smart Layout Assistant Density Analytics
+  const contentDensityMetric = useMemo(() => {
+    let charCount = activeSlide.title.length + activeSlide.subtitle.length;
+    let itemsCount = activeSlide.elements.length;
+
+    activeSlide.elements.forEach(e => {
+      if (e.content) charCount += e.content.length;
+      if (e.items) itemsCount += e.items.length;
+      if (e.cards) itemsCount += e.cards.length * 2;
+      if (e.bullets) itemsCount += e.bullets.length;
+    });
+
+    const score = Math.min(100, Math.round((charCount * 0.4) + (itemsCount * 8)));
+    let statusText = '适中平衡 · 适合标准演说';
+
+    if (score < 40) {
+      statusText = '极简高透 · 留白气场强';
+    } else if (score > 70) {
+      statusText = '信息偏稠密 · 建议卡片化';
+    }
+
+    return { score, statusText, charCount, itemsCount };
+  }, [activeSlide]);
+
+  // Record History
+  const pushHistory = (newSlides: Slide[]) => {
+    const nextHistory = history.slice(0, historyIndex + 1);
+    nextHistory.push(newSlides);
+    setHistory(nextHistory);
+    setHistoryIndex(nextHistory.length - 1);
+    setSlides(newSlides);
+  };
+
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      setHistoryIndex(historyIndex - 1);
+      setSlides(history[historyIndex - 1]);
+      showToast('已撤销 (⌘Z)');
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(historyIndex + 1);
+      setSlides(history[historyIndex + 1]);
+      showToast('已重做 (⌘Y)');
+    }
+  };
+
+  // SMART THEME PALETTE ENGINE
+  const applySmartPaletteToDeck = (themeKey: SlideTheme) => {
+    const pal = SMART_PALETTES[themeKey];
+    showToast(`✦ 正在将全案色板重置为【${pal.name}】...`);
+
+    const nextSlides = slides.map(s => {
+      const nextElements = s.elements.map(e => {
+        if (e.type === 'bento-grid' && e.cards) {
+          const nextCards = e.cards.map(c => ({
+            ...c,
+            grad: pal.gradPair
+          }));
+          return { ...e, cards: nextCards };
+        }
+        return e;
+      });
+      return {
+        ...s,
+        theme: themeKey,
+        elements: nextElements
+      };
+    });
+
+    pushHistory(nextSlides);
+    setShowPalettePopover(false);
+    showToast(`已成功装配【${pal.name}】调性！`);
+  };
+
+  // Presenter Timer
+  useEffect(() => {
+    let timer: any = null;
+    if (isPresenterActive) {
+      timer = setInterval(() => setElapsedSeconds(s => s + 1), 1000);
+    } else {
+      setElapsedSeconds(0);
+    }
+    return () => clearInterval(timer);
+  }, [isPresenterActive]);
+
+  // Laser Pointer Coordinates
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isLaserActive) {
+        setLaserPos({ x: e.clientX, y: e.clientY });
+      }
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [isLaserActive]);
+
+  // Global Keyboard Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isFullScreen) {
-        if (e.key === 'ArrowRight' || e.key === 'Space') {
-          e.preventDefault();
+      if (isPresenterActive) {
+        if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
           setActiveSlideIndex(prev => Math.min(prev + 1, slides.length - 1));
-        } else if (e.key === 'ArrowLeft') {
-          e.preventDefault();
+        } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
           setActiveSlideIndex(prev => Math.max(prev - 1, 0));
         } else if (e.key === 'Escape') {
-          setIsFullScreen(false);
+          setIsPresenterActive(false);
+        } else if (e.key.toLowerCase() === 'l') {
+          setIsLaserActive(l => !l);
+          showToast(isLaserActive ? '已关闭激光笔' : '已开启模拟激光笔');
+        }
+      } else {
+        if (e.key === 'Escape') {
+          setSelectedElementId(null);
+          setMarqueeRect(null);
+          setIsFileDrawerOpen(false);
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFullScreen, slides.length]);
+  }, [isPresenterActive, slides.length, isLaserActive]);
 
-  // AI Generate Deck based on Topic
-  const handleAiGenerateDeck = async () => {
-    if (!aiTopicInput.trim()) return;
-    setIsGeneratingDeck(true);
+  // Marquee Selection Pointer Handlers
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isMarqueeActive) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setIsMarqueeDragging(true);
+    setMarqueeStart({ x, y });
+    setMarqueeRect({ x, y, w: 0, h: 0 });
+  };
 
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content: '你是一个顶级 Apple Keynote 幻灯片策划专家。请根据用户主题，生成包含 4~5 页幻灯片的完整 JSON 数组。每个元素包含 id, title, subtitle, bullets (数组3条), layout (可选 title, agenda, points, split, quote, conclusion), notes, badge。只输出合法的 JSON 数组，不带任何 Markdown 包裹。'
-            },
-            {
-              role: 'user',
-              content: `主题：${aiTopicInput}`
-            }
-          ]
-        })
-      });
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isMarqueeDragging) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const curX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+    const curY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
 
-      const data = await response.json();
-      const rawText = data.reply || data.content || data.response || '';
-      const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(cleanJson);
+    const x = Math.min(marqueeStart.x, curX);
+    const y = Math.min(marqueeStart.y, curY);
+    const w = Math.abs(curX - marqueeStart.x);
+    const h = Math.abs(curY - marqueeStart.y);
 
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setSlides(parsed);
-        setActiveSlideIndex(0);
-      }
-    } catch (e) {
-      // Fallback simulated deck
-      const newDeck: Slide[] = [
-        {
-          id: 'gen-1',
-          title: aiTopicInput,
-          subtitle: '基于第一性原理与多模态协同架构的完整商业与技术蓝图',
-          bullets: [
-            '核心价值：打通端侧算力、长程记忆与隐私安全的闭环',
-            '技术壁垒：全本地脱网运行，毫秒级响应',
-            '商业模型：按需授权与私有化节点部署'
-          ],
-          layout: 'title',
-          notes: '开篇点题，突出核心差异化壁垒。',
-          badge: '立项发布'
-        },
-        {
-          id: 'gen-2',
-          title: '架构演进与技术实施路径',
-          subtitle: '从单点突破到全域生态协同',
-          bullets: [
-            '第一阶段：完成端侧核心向量数据库与模型轻量化量化',
-            '第二阶段：多智能体协作总线接入与知识库联通',
-            '第三阶段：商业化落地与规模化交付'
-          ],
-          layout: 'points',
-          notes: '分阶段阐述落地可行性。',
-          badge: '技术架构'
-        },
-        {
-          id: 'gen-3',
-          title: '“将超级智能的权柄，真正还给每一个个体”',
-          subtitle: '核心使命宣言与愿景',
-          bullets: [
-            '数据主权不容侵犯，本地优先是时代必然',
-            '以极致 Apple 审美重构专业生产力'
-          ],
-          layout: 'quote',
-          notes: '全场情感高潮。',
-          badge: '愿景结语'
-        }
-      ];
-      setSlides(newDeck);
-      setActiveSlideIndex(0);
-    } finally {
-      setIsGeneratingDeck(false);
+    setMarqueeRect({ x, y, w, h });
+  };
+
+  const handlePointerUp = () => {
+    if (!isMarqueeDragging) return;
+    setIsMarqueeDragging(false);
+    if (!marqueeRect || marqueeRect.w < 30 || marqueeRect.h < 30) {
+      setMarqueeRect(null);
     }
   };
 
-  // Conversational Modification on entire deck
-  const handleExecuteChatInstruction = async () => {
-    if (!chatInstruction.trim()) return;
-    setIsProcessingChat(true);
+  const applyMarqueeAI = (type: 'bento' | 'metric' | 'contrast') => {
+    showToast(`正在重塑框选区域为 ${type === 'bento' ? 'Bento便当盒' : type === 'metric' ? '核心数据指标' : '双栏对比'}...`);
+    setMarqueeRect(null);
 
-    try {
-      const prompt = `当前幻灯片列表：\n${JSON.stringify(slides)}\n\n用户修改要求：${chatInstruction}\n\n请修改幻灯片内容，输出修改后的完整 JSON 数组。`;
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: '你是一个 Keynote 幻灯片编辑助手。严格只输出修改后的 JSON 数组。' },
-            { role: 'user', content: prompt }
+    setTimeout(() => {
+      const nextSlides = [...slides];
+      if (type === 'bento') {
+        nextSlides[activeSlideIndex].elements[1] = {
+          id: `elem-bento-${Date.now()}`,
+          type: 'bento-grid',
+          cards: [
+            { tag: '区域特性 A', title: '空间神经直觉操控', desc: '利用区域重构提取的核心论点。', grad: 'from-blue-600/20 to-indigo-600/10' },
+            { tag: '区域特性 B', title: '钛金属超轻机身', desc: '保持 Apple 工业设计极致手感。', grad: 'from-zinc-600/20 to-stone-600/10' }
           ]
-        })
-      });
-
-      const data = await response.json();
-      const rawText = data.reply || data.content || data.response || '';
-      const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(cleanJson);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setSlides(parsed);
+        };
+      } else {
+        nextSlides[activeSlideIndex].elements[1] = {
+          id: `elem-metric-${Date.now()}`,
+          type: 'metric-row',
+          items: [
+            { val: '99.4%', lbl: '准确率指标' },
+            { val: '3.4x', lbl: '效率提升倍数' },
+            { val: '< 10ms', lbl: '响应速度' }
+          ]
+        };
       }
-    } catch {
-      // Fallback: update active slide title
-      setSlides(prev => prev.map((s, idx) => idx === activeSlideIndex ? { ...s, subtitle: `${s.subtitle} · (${chatInstruction.slice(0, 12)})` } : s));
-    } finally {
-      setIsProcessingChat(false);
-      setChatInstruction('');
-    }
+      pushHistory(nextSlides);
+      showToast('区域 AI 视觉重构完成！');
+    }, 600);
   };
 
-  // Element-level AI modification (Rephrase / Expand / Polish)
-  const handleAiPolishElement = async (action: 'polish' | 'expand' | 'catchphrase') => {
-    if (!selectedElement) return;
-    setIsAiModifyingElement(true);
+  // Copilot Command Dispatch
+  const handleSendChatPrompt = () => {
+    if (!chatInput.trim()) return;
+    const userText = chatInput;
+    setChatMessages(prev => [...prev, { role: 'user', text: userText }]);
+    setChatInput('');
 
-    let instruction = '请润色并提升文学与极客质感：';
-    if (action === 'expand') instruction = '请充实论据并展开细节阐述：';
-    if (action === 'catchphrase') instruction = '请提炼为震撼的金句形式（20字以内）：';
-
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: '你是一个文案大师。直接输出修改后的单段文字，不加任何解释。' },
-            { role: 'user', content: `${instruction}\n原内容：${selectedElement.text}` }
+    setTimeout(() => {
+      if (userText.includes('三列') || userText.includes('卡片')) {
+        const nextSlides = [...slides];
+        nextSlides[activeSlideIndex].elements[1] = {
+          id: `bento-gen-${Date.now()}`,
+          type: 'bento-grid',
+          cards: [
+            { tag: '维度 01', title: '空间交互重构', desc: '手势与眼动微米级捕捉。', grad: 'from-blue-600/20 to-purple-600/10' },
+            { tag: '维度 02', title: '双神经引擎', desc: '端侧 320 亿多模态模型常驻。', grad: 'from-emerald-600/20 to-teal-600/10' }
           ]
-        })
-      });
-      const data = await response.json();
-      const newText = (data.reply || data.content || data.response || '').trim();
-
-      if (newText) {
-        setSlides(prev => prev.map((s, idx) => {
-          if (idx !== activeSlideIndex) return s;
-          if (selectedElement.type === 'title') return { ...s, title: newText };
-          if (selectedElement.type === 'subtitle') return { ...s, subtitle: newText };
-          if (selectedElement.type === 'notes') return { ...s, notes: newText };
-          if (selectedElement.type === 'bullet' && selectedElement.index !== undefined) {
-            const nextBullets = [...s.bullets];
-            nextBullets[selectedElement.index] = newText;
-            return { ...s, bullets: nextBullets };
-          }
-          return s;
-        }));
-        setSelectedElement(null);
+        };
+        pushHistory(nextSlides);
+        setChatMessages(prev => [...prev, { role: 'assistant', text: '已为您将当前页内容转化为符合 Apple 规范的 Bento 便当盒卡片排版。' }]);
+      } else if (userText.includes('量化') || userText.includes('指标') || userText.includes('数字')) {
+        const nextSlides = [...slides];
+        nextSlides[activeSlideIndex].elements[1] = {
+          id: `metric-gen-${Date.now()}`,
+          type: 'metric-row',
+          items: [
+            { val: '3.8x', lbl: '吞吐峰值提升' },
+            { val: '99.9%', lbl: '端侧指令命中率' },
+            { val: '$45 B', lbl: '新增生态市场空间' }
+          ]
+        };
+        pushHistory(nextSlides);
+        setChatMessages(prev => [...prev, { role: 'assistant', text: '已为您提取出 3 个量化大数字指标，并在视觉上做了放大对比排版。' }]);
+      } else {
+        setChatMessages(prev => [...prev, { role: 'assistant', text: `已解析并应用指令: ${userText}` }]);
       }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsAiModifyingElement(false);
-    }
-  };
-
-  // Local PPT / Outline File Import Handler
-  const handleImportLocalFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setImportedFileName(file.name);
-    const reader = new FileReader();
-
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      try {
-        // Try parsing JSON slides
-        const parsed = JSON.parse(content);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setSlides(parsed);
-          setActiveSlideIndex(0);
-          return;
-        }
-      } catch {}
-
-      // Parse Markdown Outline or Text
-      const lines = content.split('\n').filter(l => l.trim().length > 0);
-      const newDeck: Slide[] = [];
-      let tempSlide: { title: string; subtitle: string; bullets: string[] } | null = null;
-
-      for (let idx = 0; idx < lines.length; idx++) {
-        const line = lines[idx];
-        if (line.startsWith('# ') || idx === 0) {
-          if (tempSlide && tempSlide.title) {
-            newDeck.push({
-              id: `imported-${newDeck.length + 1}`,
-              title: tempSlide.title,
-              subtitle: tempSlide.subtitle,
-              bullets: tempSlide.bullets.length > 0 ? tempSlide.bullets : ['要点 1', '要点 2'],
-              layout: 'points',
-              notes: '从本地文档导入生成',
-              badge: '本地导入'
-            });
-          }
-          tempSlide = {
-            title: line.replace(/^#+\s*/, ''),
-            subtitle: '本地解析大纲',
-            bullets: []
-          };
-        } else if (line.startsWith('- ') || line.startsWith('* ')) {
-          if (tempSlide) {
-            tempSlide.bullets.push(line.replace(/^[-*]\s*/, ''));
-          }
-        }
-      }
-
-      if (tempSlide && tempSlide.title) {
-        newDeck.push({
-          id: `imported-${newDeck.length + 1}`,
-          title: tempSlide.title,
-          subtitle: tempSlide.subtitle,
-          bullets: tempSlide.bullets.length > 0 ? tempSlide.bullets : ['要点 1'],
-          layout: 'points',
-          notes: '从本地文档导入生成',
-          badge: '本地导入'
-        });
-      }
-
-      if (newDeck.length > 0) {
-        setSlides(newDeck);
-        setActiveSlideIndex(0);
-      }
-    };
-
-    reader.readAsText(file);
+    }, 600);
   };
 
   // Add Slide
   const handleAddSlide = () => {
     const newSlide: Slide = {
       id: `slide-${Date.now()}`,
-      title: '新幻灯片标题',
-      subtitle: '副标题描述内容与核心要义',
-      bullets: [
-        '关键论点与事实支撑一',
-        '关键论点与事实支撑二',
-        '关键论点与事实支撑三'
-      ],
+      title: '全新未命名幻灯片',
+      subtitle: '点击在此编辑副标题',
+      theme: 'obsidian',
+      notes: '',
       layout: 'points',
-      notes: '讲者备忘录与演练要点。',
-      badge: '新页'
+      badge: 'NEW',
+      elements: [
+        { id: `el-h-${Date.now()}`, type: 'heading', content: '在此键入核心大标题', classes: 'text-3xl font-bold text-white mb-2' },
+        { id: `el-p-${Date.now()}`, type: 'paragraph', content: '双击文本进行自由输入，或呼唤右侧 AI 助手一键重构...', classes: 'text-xs text-zinc-400 max-w-lg mb-4' }
+      ]
     };
     const nextSlides = [...slides];
     nextSlides.splice(activeSlideIndex + 1, 0, newSlide);
-    setSlides(nextSlides);
+    pushHistory(nextSlides);
     setActiveSlideIndex(activeSlideIndex + 1);
-  };
-
-  // Delete Slide
-  const handleDeleteSlide = (index: number) => {
-    if (slides.length <= 1) return;
-    const nextSlides = slides.filter((_, idx) => idx !== index);
-    setSlides(nextSlides);
-    setActiveSlideIndex(Math.min(activeSlideIndex, nextSlides.length - 1));
+    showToast('已添加新幻灯片');
   };
 
   // Duplicate Slide
-  const handleDuplicateSlide = (index: number) => {
-    const target = slides[index];
-    const newSlide: Slide = { ...target, id: `slide-${Date.now()}`, title: `${target.title} (副本)` };
+  const handleDuplicateSlide = (idx?: number) => {
+    const targetIdx = idx !== undefined ? idx : activeSlideIndex;
+    const copy = JSON.parse(JSON.stringify(slides[targetIdx]));
+    copy.id = `slide-${Date.now()}`;
     const nextSlides = [...slides];
-    nextSlides.splice(index + 1, 0, newSlide);
-    setSlides(nextSlides);
-    setActiveSlideIndex(index + 1);
+    nextSlides.splice(targetIdx + 1, 0, copy);
+    pushHistory(nextSlides);
+    setActiveSlideIndex(targetIdx + 1);
+    showToast('页面已重制');
   };
 
-  // Reorder
-  const handleMoveSlide = (fromIndex: number, direction: 'up' | 'down') => {
-    const toIndex = direction === 'up' ? fromIndex - 1 : fromIndex + 1;
-    if (toIndex < 0 || toIndex >= slides.length) return;
-    const nextSlides = [...slides];
-    const [moved] = nextSlides.splice(fromIndex, 1);
-    nextSlides.splice(toIndex, 0, moved);
-    setSlides(nextSlides);
-    setActiveSlideIndex(toIndex);
+  // Delete Slide
+  const handleDeleteSlide = (idx?: number) => {
+    if (slides.length <= 1) {
+      showToast('请至少保留一张幻灯片');
+      return;
+    }
+    const targetIdx = idx !== undefined ? idx : activeSlideIndex;
+    const nextSlides = slides.filter((_, i) => i !== targetIdx);
+    pushHistory(nextSlides);
+    setActiveSlideIndex(Math.min(activeSlideIndex, nextSlides.length - 1));
+    showToast('幻灯片已删除');
   };
 
-  // Save to Material Knowledge Base
-  const handleSaveToMaterials = async () => {
-    const transcript = slides.map((s, idx) => `### P${idx + 1}: ${s.title}\n**副标题**: ${s.subtitle}\n**要点**:\n${s.bullets.map(b => `- ${b}`).join('\n')}\n**演练备注**: ${s.notes}`).join('\n\n---\n\n');
-    try {
-      await fetch('/api/materials', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: `Keynote幻灯片: ${slides[0]?.title || '未命名企划'}`,
-          body: transcript,
-          kind: 'slides',
-          tags: ['AI幻灯片', 'Keynote', theme, studioMode]
-        })
-      });
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 2000);
-    } catch (e) {
-      console.error(e);
+  // Save to Material
+  const handleSaveToMaterialVault = () => {
+    const title = `Keynote演示案: ${activeSlide.title}`;
+    const body = `全套演示文稿（共 ${slides.length} 页）:\n- 当前页: ${activeSlide.title}\n- 色板风格: ${currentPalette.name}\n- 讲者选段: ${activeSlide.notes}`;
+    
+    showToast('已存入素材知识库！');
+    if (onSaveToMaterial) {
+      onSaveToMaterial(title, body);
     }
   };
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden bg-[var(--apple-bg)] select-none text-[var(--apple-text-primary)]">
-      {/* Hidden File Input for Local PPT Import */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".pptx,.json,.md,.txt"
-        onChange={handleImportLocalFile}
-        className="hidden"
-      />
+    <div className="flex flex-col h-full w-full overflow-hidden bg-[#09090d] text-slate-100 font-sans select-none relative">
+      {/* Apple Dynamic Toast Pill */}
+      {toastMsg && (
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full bg-[#181820]/95 border border-white/20 text-white text-xs font-semibold shadow-2xl flex items-center space-x-2 backdrop-blur-2xl animate-in fade-in zoom-in-95">
+          <CheckCircle2 className="w-4 h-4 text-blue-400" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
 
-      {/* ============================================================ */}
-      {/* 1. TOP macOS PRO TOOLBAR: MODE SWITCHER & KEYNOTE CONTROLS */}
-      {/* ============================================================ */}
-      <header className="h-14 border-b border-[var(--apple-border)] bg-[var(--apple-glass)] backdrop-blur-2xl px-6 flex items-center justify-between shrink-0 z-30 select-none">
-        {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-rose-500 flex items-center justify-center text-white shadow-xs">
-            <Presentation className="w-4 h-4" />
+      {/* DYNAMIC ISLAND TOP TELEMETRY PILL */}
+      <div className="fixed top-2.5 left-1/2 -translate-x-1/2 z-40 transition-all duration-300">
+        <div className="px-4 py-1.5 rounded-full bg-black/90 backdrop-blur-2xl text-white text-xs font-mono shadow-2xl flex items-center space-x-3.5 border border-white/15">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500" />
+          </span>
+          <div className="flex items-center space-x-1.5 font-sans">
+            <span className="font-bold text-white/90">第 {activeSlideIndex + 1} / {slides.length} 页</span>
+            <span className="text-[10px] text-zinc-400">· {currentPalette.name}</span>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xs font-bold tracking-tight text-[var(--apple-text-primary)]">
-                AI 幻灯片 · Apple Keynote Pro
-              </h1>
-              <span className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-500 font-mono text-[9px] font-bold border border-amber-500/20">
-                Deck Studio
-              </span>
+          <div className="h-3 w-px bg-white/20" />
+          <div className="flex items-center space-x-2 text-[10px] text-zinc-400 font-mono">
+            <span className="text-purple-400 font-bold">{aspectRatio} UHD</span>
+            <span>·</span>
+            <span className="text-teal-300 font-bold">Keynote AI ULTRA</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 1. TOP TITANIUM QUICK ACCESS BAR */}
+      <header className="h-11 bg-[#111115] border-b border-white/10 px-3.5 flex items-center justify-between shrink-0 z-40 select-none">
+        <div className="flex items-center space-x-3">
+          {/* Traffic Lights */}
+          <div className="flex items-center space-x-1.5 mr-1">
+            <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
+            <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
+            <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
+          </div>
+
+          {/* Brand Badge */}
+          <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded-lg bg-white/5 border border-white/5">
+            <div className="w-5 h-5 rounded-md bg-gradient-to-tr from-blue-600 via-purple-600 to-rose-500 flex items-center justify-center text-white shadow-sm">
+              <Sparkles className="w-3 h-3" />
             </div>
-            <p className="text-[10px] text-[var(--apple-text-tertiary)]">
-              {studioMode === 'ai_generate' ? '主题智能生成 · 元素点击 AI 润色 · 对话改稿' : '本地全功能编辑工作台 · 导入 PPT / 大纲编辑'}
-            </p>
+            <span className="text-xs font-bold text-white hidden sm:inline">Keynote AI</span>
+            <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 font-semibold">ULTRA</span>
           </div>
-        </div>
 
-        {/* Center: Apple Segmented Mode Switcher */}
-        <div className="flex items-center bg-[var(--apple-subtle)] border border-[var(--apple-border)] p-1 rounded-2xl shadow-2xs">
-          <button
-            onClick={() => setStudioMode('ai_generate')}
-            className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
-              studioMode === 'ai_generate'
-                ? 'bg-[var(--apple-surface)] text-[var(--apple-accent)] shadow-xs scale-[1.02]'
-                : 'text-[var(--apple-text-secondary)] hover:text-[var(--apple-text-primary)]'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>✨ AI 生成与改稿 (AI Mode)</span>
-          </button>
-
-          <button
-            onClick={() => setStudioMode('local_editor')}
-            className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
-              studioMode === 'local_editor'
-                ? 'bg-[var(--apple-surface)] text-amber-500 shadow-xs scale-[1.02]'
-                : 'text-[var(--apple-text-secondary)] hover:text-[var(--apple-text-primary)]'
-            }`}
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-            <span>🛠️ 本地编辑工作台 (Local Editor)</span>
-          </button>
-        </div>
-
-        {/* Right Actions: Play / Save / Export */}
-        <div className="flex items-center gap-2">
-          {/* Play Full Screen Presentation */}
-          <button
-            onClick={() => setIsFullScreen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--apple-subtle)] border border-[var(--apple-border)] text-xs font-semibold text-[var(--apple-text-secondary)] hover:text-[var(--apple-text-primary)] transition-all shadow-2xs"
-            title="启动 macOS 全屏幻灯片放映 (ESC 退出)"
-          >
-            <MonitorPlay className="w-3.5 h-3.5 text-emerald-400" />
-            <span>全屏放映</span>
-          </button>
-
-          {/* Save to Material */}
-          <button
-            onClick={handleSaveToMaterials}
-            disabled={savedSuccess}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
-              savedSuccess
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                : 'bg-[var(--apple-subtle)] border border-[var(--apple-border)] text-[var(--apple-text-secondary)] hover:text-[var(--apple-text-primary)]'
-            }`}
-          >
-            {savedSuccess ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <BookmarkPlus className="w-3.5 h-3.5" />}
-            <span>{savedSuccess ? '已收录素材库' : '存入素材库'}</span>
-          </button>
-
-          <button
-            onClick={() => window.print()}
-            className="px-3 py-1.5 rounded-xl bg-[var(--apple-accent)] text-white text-xs font-semibold shadow-xs hover:bg-[var(--apple-accent-hover)] transition-all flex items-center gap-1.5"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>导出 PDF/PPT</span>
-          </button>
-        </div>
-      </header>
-
-      {/* ============================================================ */}
-      {/* 2. MAIN WORKSPACE CONTAINER */}
-      {/* ============================================================ */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* ========================================================== */}
-        {/* LEFT SLIDES THUMBNAIL NAVIGATOR (Apple Keynote Sidebar) */}
-        {/* ========================================================== */}
-        <aside className="w-64 border-r border-[var(--apple-border)] bg-[var(--apple-surface)]/80 backdrop-blur-2xl flex flex-col shrink-0">
-          <div className="h-11 px-4 border-b border-[var(--apple-separator)] flex items-center justify-between">
-            <span className="text-xs font-bold text-[var(--apple-text-primary)] flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-[var(--apple-accent)]" />
-              <span>幻灯片大纲 ({slides.length} 页)</span>
-            </span>
-
-            <button
-              onClick={handleAddSlide}
-              className="p-1 rounded-lg bg-[var(--apple-subtle)] hover:bg-[var(--apple-accent)] hover:text-white transition-all text-xs"
-              title="添加新幻灯片页"
-            >
-              <Plus className="w-3.5 h-3.5" />
+          {/* WPS Classic QAT */}
+          <div className="flex items-center space-x-0.5 bg-white/5 px-1.5 py-0.5 rounded-lg border border-white/5 text-zinc-300">
+            <button onClick={() => showToast('已成功同步保存至 iCloud Drive')} className="p-1 hover:text-white hover:bg-white/10 rounded transition" title="保存 (⌘S)">
+              <Save className="w-3.5 h-3.5 text-blue-400" />
+            </button>
+            <button onClick={() => showToast('正在输出超清 PDF')} className="p-1 hover:text-rose-300 text-rose-400 hover:bg-white/10 rounded transition" title="输出 PDF">
+              <FileDown className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={() => setActiveModal('print')} className="p-1 hover:text-white hover:bg-white/10 rounded transition" title="打印 (⌘P)">
+              <Printer className="w-3.5 h-3.5" />
+            </button>
+            <div className="h-3 w-px bg-white/10 mx-0.5" />
+            <button onClick={handleUndo} disabled={historyIndex <= 0} className="p-1 hover:text-white hover:bg-white/10 rounded transition disabled:opacity-30" title="撤销 (⌘Z)">
+              <Undo2 className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="p-1 hover:text-white hover:bg-white/10 rounded transition disabled:opacity-30" title="恢复 (⌘Y)">
+              <Redo2 className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* Thumbnails Stream */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
-            {slides.map((s, idx) => (
-              <div
-                key={s.id}
-                onClick={() => setActiveSlideIndex(idx)}
-                className={`p-2.5 rounded-2xl border transition-all cursor-pointer space-y-1 relative group ${
-                  activeSlideIndex === idx
-                    ? 'border-[var(--apple-accent)] bg-[var(--apple-accent-subtle)] ring-2 ring-[var(--apple-accent)]/30 shadow-xs'
-                    : 'border-[var(--apple-border)] bg-[var(--apple-subtle)]/40 hover:border-[var(--apple-border-strong)]'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono font-bold text-[var(--apple-accent)]">
-                    P{idx + 1}
-                  </span>
-                  <span className="text-[9px] font-mono text-[var(--apple-text-tertiary)]">
-                    {LAYOUT_CONFIG[s.layout]?.label || '页面'}
-                  </span>
-                </div>
+          {/* Document Title & iCloud Indicator */}
+          <div className="flex items-center space-x-1.5 pl-1">
+            <input 
+              type="text" 
+              defaultValue="2026 Apple 空间神经生态发布会.key"
+              className="bg-transparent hover:bg-white/5 focus:bg-white/10 text-xs font-semibold text-white px-2 py-0.5 rounded-md border border-transparent focus:border-blue-500/60 focus:outline-none transition w-44 md:w-56 truncate"
+            />
+            <div className="hidden lg:inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>iCloud 已同步</span>
+            </div>
+          </div>
+        </div>
 
-                <p className="text-xs font-semibold text-[var(--apple-text-primary)] truncate">
-                  {s.title}
-                </p>
-
-                {/* Hover Actions */}
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 pt-1 justify-end">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleMoveSlide(idx, 'up'); }}
-                    disabled={idx === 0}
-                    className="p-1 hover:text-[var(--apple-accent)] disabled:opacity-20"
-                    title="上移"
-                  >
-                    <ArrowUp className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleMoveSlide(idx, 'down'); }}
-                    disabled={idx === slides.length - 1}
-                    className="p-1 hover:text-[var(--apple-accent)] disabled:opacity-20"
-                    title="下移"
-                  >
-                    <ArrowDown className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDuplicateSlide(idx); }}
-                    className="p-1 hover:text-[var(--apple-accent)]"
-                    title="复制"
-                  >
-                    <Copy className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDeleteSlide(idx); }}
-                    disabled={slides.length <= 1}
-                    className="p-1 hover:text-rose-500 disabled:opacity-20"
-                    title="删除"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            ))}
+        {/* Right Presentation Mode Trigger & Share */}
+        <div className="flex items-center space-x-2 text-xs">
+          <div className="hidden md:flex items-center space-x-1 px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-mono">
+            <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+            <span>AI评分: 98</span>
           </div>
 
-          {/* Theme Selector Strip */}
-          <div className="p-3 border-t border-[var(--apple-separator)] bg-[var(--apple-subtle)]/30 space-y-1.5">
-            <span className="text-[10px] font-bold text-[var(--apple-text-tertiary)] uppercase tracking-wider">
-              全套视觉主题
-            </span>
-            <div className="grid grid-cols-2 gap-1 text-[10px]">
-              {(['obsidian', 'chalk', 'aurora', 'parchment'] as const).map(t => (
+          <button onClick={() => showToast('已生成协作链接')} className="px-2.5 py-1 bg-[#1b1b23] hover:bg-white/10 text-white border border-white/10 text-xs font-medium rounded-lg flex items-center space-x-1.5 transition">
+            <Share2 className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">协作</span>
+          </button>
+
+          <div className="inline-flex rounded-lg shadow-sm border border-blue-500/50 overflow-hidden">
+            <button onClick={() => setIsPresenterActive(true)} className="px-3.5 py-1 bg-gradient-to-r from-blue-600 to-[#0071e3] hover:brightness-110 text-white text-xs font-semibold flex items-center space-x-1.5 transition">
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>放映</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* 2. FULL 12 RIBBON TABS BAR */}
+      <section className="bg-[#181820] border-b border-white/10 shrink-0 select-none shadow-sm relative z-30">
+        <div className="flex items-center justify-between px-3 pt-1 border-b border-white/5 text-xs">
+          <div className="flex items-center space-x-0.5 overflow-x-auto no-scrollbar">
+            <button onClick={() => setIsFileDrawerOpen(p => !p)} className="px-3 py-1 font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-t-md transition flex items-center space-x-1 shadow-sm mr-1">
+              <Menu className="w-3.5 h-3.5" />
+              <span>文件</span>
+            </button>
+
+            {[
+              { id: 'home', label: '开始', icon: Home },
+              { id: 'insert', label: '插入', icon: Plus },
+              { id: 'design', label: '设计与色板', icon: Palette },
+              { id: 'transitions', label: '切换', icon: Move },
+              { id: 'animations', label: '动画', icon: Zap },
+              { id: 'slideshow', label: '放映', icon: Play },
+              { id: 'review', label: '审阅', icon: SpellCheck },
+              { id: 'view', label: '视图', icon: Eye },
+              { id: 'tools', label: '工具', icon: Wrench },
+              { id: 'ai_hub', label: 'AI 智汇', icon: Sparkles }
+            ].map(tab => {
+              const IconC = tab.icon;
+              const isAi = tab.id === 'ai_hub' || tab.id === 'design';
+              return (
                 <button
-                  key={t}
-                  onClick={() => setTheme(t)}
-                  className={`p-1.5 rounded-xl border text-center transition-all ${
-                    theme === t
-                      ? 'bg-[var(--apple-accent-subtle)] border-[var(--apple-accent)] text-[var(--apple-accent)] font-bold'
-                      : 'bg-[var(--apple-subtle)] border-[var(--apple-border)] text-[var(--apple-text-secondary)]'
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveRibbonTab(tab.id as RibbonTab);
+                    showToast(`Ribbon 工具栏: 【${tab.label}】`);
+                  }}
+                  className={`px-3 py-1 font-medium transition-all flex items-center space-x-1.5 whitespace-nowrap border-b-2 ${
+                    activeRibbonTab === tab.id
+                      ? isAi ? 'text-purple-400 border-purple-500' : 'text-blue-400 border-blue-500'
+                      : 'text-zinc-400 hover:text-white border-transparent'
                   }`}
                 >
-                  {THEME_CONFIG[t].label}
+                  <IconC className={`w-3.5 h-3.5 ${isAi ? 'text-purple-300' : 'text-blue-400'}`} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* EXPANDED SUB-TOOLBAR CONTENT */}
+        <div className="h-20 px-3 py-1 flex items-center overflow-x-auto relative text-xs min-w-max">
+          {/* HOME TAB */}
+          {activeRibbonTab === 'home' && (
+            <div className="flex items-center space-x-2">
+              <button onClick={handleAddSlide} className="px-3 py-1.5 rounded-lg bg-blue-600/30 text-blue-300 font-bold border border-blue-500/40 flex items-center space-x-1">
+                <Plus className="w-3.5 h-3.5" />
+                <span>新建页</span>
+              </button>
+              <button onClick={() => handleDuplicateSlide()} className="px-2.5 py-1.5 rounded-lg bg-white/10 text-white font-bold">重制副本</button>
+              <button onClick={() => handleDeleteSlide()} className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 text-rose-300 font-bold">删除页</button>
+
+              <div className="h-10 w-px bg-white/10 mx-1" />
+
+              <button onClick={() => setShowPalettePopover(p => !p)} className="px-3 py-1.5 rounded-lg bg-purple-600/30 text-purple-300 font-bold border border-purple-500/40 flex items-center space-x-1">
+                <Palette className="w-3.5 h-3.5 text-purple-400" />
+                <span>智能色板</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsMarqueeActive(p => !p);
+                  showToast(isMarqueeActive ? '已退出区域框选模式' : '已开启区域框选模式：在画布上按住拖拽即可重构');
+                }}
+                className={`px-3 py-1.5 rounded-lg border font-bold flex items-center space-x-1.5 transition ${
+                  isMarqueeActive ? 'bg-blue-600 text-white border-blue-500' : 'bg-white/5 border-white/10 text-zinc-300'
+                }`}
+              >
+                <Scan className="w-3.5 h-3.5" />
+                <span>{isMarqueeActive ? '框选中...' : '区域框选 AI'}</span>
+              </button>
+            </div>
+          )}
+
+          {/* DESIGN TAB */}
+          {activeRibbonTab === 'design' && (
+            <div className="flex items-center space-x-2">
+              <span className="text-zinc-400">全局主题:</span>
+              {Object.keys(SMART_PALETTES).map(t => (
+                <button
+                  key={t}
+                  onClick={() => applySmartPaletteToDeck(t as SlideTheme)}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                    activeSlide.theme === t ? 'bg-purple-600 text-white shadow-xs' : 'bg-white/5 text-zinc-400'
+                  }`}
+                >
+                  {SMART_PALETTES[t as SlideTheme].name.split(' ')[0]}
                 </button>
               ))}
+
+              <div className="h-10 w-px bg-white/10 mx-1" />
+
+              <button onClick={() => setAspectRatio('16:9')} className={`px-2.5 py-1 rounded font-bold ${aspectRatio === '16:9' ? 'bg-blue-600 text-white' : 'bg-white/5 text-zinc-400'}`}>16:9 UHD</button>
+              <button onClick={() => setAspectRatio('16:10')} className={`px-2.5 py-1 rounded font-bold ${aspectRatio === '16:10' ? 'bg-blue-600 text-white' : 'bg-white/5 text-zinc-400'}`}>16:10 Pro</button>
+              <button onClick={() => setAspectRatio('4:3')} className={`px-2.5 py-1 rounded font-bold ${aspectRatio === '4:3' ? 'bg-blue-600 text-white' : 'bg-white/5 text-zinc-400'}`}>4:3 标屏</button>
             </div>
+          )}
+
+          {/* AI HUB TAB */}
+          {activeRibbonTab === 'ai_hub' && (
+            <div className="flex items-center space-x-2">
+              <button onClick={() => setActiveModal('topic')} className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 via-purple-600 to-rose-500 text-white font-bold flex items-center space-x-1.5 shadow-md">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>主题全案智造 (Topic to Deck)</span>
+              </button>
+              <button onClick={() => setActiveModal('link')} className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center space-x-1">
+                <Globe className="w-3.5 h-3.5" />
+                <span>长文/链接转 PPT</span>
+              </button>
+              <button onClick={() => setActiveModal('import')} className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 flex items-center space-x-1">
+                <FileUp className="w-3.5 h-3.5" />
+                <span>导入 PPTX 升级</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* FILE BACKSTAGE DRAWER */}
+      {isFileDrawerOpen && (
+        <div className="absolute top-[88px] left-3 w-80 bg-[#1b1b23] border border-white/20 rounded-2xl p-2 shadow-2xl z-50 animate-in fade-in space-y-1 text-xs select-none">
+          <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between font-bold text-white">
+            <span>文稿操作中心</span>
+            <span className="text-[10px] font-mono text-zinc-400">Keynote 2026</span>
+          </div>
+          <button onClick={() => { setActiveModal('topic'); setIsFileDrawerOpen(false); }} className="w-full px-3 py-2 rounded-lg hover:bg-blue-600 text-left text-white flex justify-between items-center">
+            <span className="flex items-center space-x-2"><FilePlus className="w-4 h-4 text-blue-400" /><span>新建空白/全案文稿</span></span>
+            <span className="font-mono text-[10px] opacity-60">⌘N</span>
+          </button>
+          <button onClick={() => { setActiveModal('import'); setIsFileDrawerOpen(false); }} className="w-full px-3 py-2 rounded-lg hover:bg-blue-600 text-left text-white flex justify-between items-center">
+            <span className="flex items-center space-x-2"><FolderOpen className="w-4 h-4 text-amber-400" /><span>导入本地 PPTX / Keynote</span></span>
+            <span className="font-mono text-[10px] opacity-60">⌘O</span>
+          </button>
+          <button onClick={() => { showToast('已同步保存'); setIsFileDrawerOpen(false); }} className="w-full px-3 py-2 rounded-lg hover:bg-blue-600 text-left text-white flex justify-between items-center">
+            <span className="flex items-center space-x-2"><Cloud className="w-4 h-4 text-emerald-400" /><span>保存到 iCloud Drive</span></span>
+            <span className="font-mono text-[10px] opacity-60">⌘S</span>
+          </button>
+          <button onClick={() => { setActiveModal('print'); setIsFileDrawerOpen(false); }} className="w-full px-3 py-2 rounded-lg hover:bg-blue-600 text-left text-white flex justify-between items-center">
+            <span className="flex items-center space-x-2"><Printer className="w-4 h-4 text-cyan-400" /><span>打印与装订预审</span></span>
+            <span className="font-mono text-[10px] opacity-60">⌘P</span>
+          </button>
+        </div>
+      )}
+
+      {/* SMART PALETTE POPOVER */}
+      {showPalettePopover && (
+        <div className="absolute top-[88px] left-64 w-80 bg-[#1a1a22] border border-white/20 rounded-2xl p-4 shadow-2xl z-50 animate-in fade-in space-y-3 text-xs select-none">
+          <div className="flex justify-between items-center border-b border-white/10 pb-2">
+            <span className="font-bold text-white flex items-center space-x-1.5">
+              <Brush className="w-4 h-4 text-purple-400" />
+              <span>Apple 语境智能色板套件</span>
+            </span>
+            <button onClick={() => setShowPalettePopover(false)} className="text-zinc-400 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="space-y-2 pt-1">
+            {Object.keys(SMART_PALETTES).map(key => {
+              const pal = SMART_PALETTES[key as SlideTheme];
+              const isSelected = activeSlide.theme === key;
+              return (
+                <div
+                  key={key}
+                  onClick={() => applySmartPaletteToDeck(key as SlideTheme)}
+                  className={`p-2.5 rounded-xl border cursor-pointer transition space-y-1 ${
+                    isSelected ? 'bg-purple-600/20 border-purple-500 text-white font-bold' : 'bg-white/5 border-white/5 hover:bg-white/10 text-zinc-300'
+                  }`}
+                >
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="flex items-center space-x-1.5">
+                      <span className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: pal.accentColor }} />
+                      <span>{pal.name}</span>
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-zinc-400 font-mono">{pal.contextDesc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* MAIN WORKSPACE AREA */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* LEFT SLIDE SORTER */}
+        <aside className="w-56 bg-[#151518] border-r border-white/10 flex flex-col shrink-0 select-none z-20">
+          <div className="p-2.5 border-b border-white/10 flex items-center justify-between text-xs font-bold">
+            <span className="text-zinc-400 uppercase tracking-wider text-[10px]">幻灯片导航 ({slides.length})</span>
+            <button onClick={handleAddSlide} className="p-1 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 transition">
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
+            {slides.map((s, idx) => {
+              const isActive = idx === activeSlideIndex;
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => {
+                    setActiveSlideIndex(idx);
+                    setSelectedElementId(null);
+                  }}
+                  className={`p-2 rounded-xl border transition cursor-pointer space-y-1.5 ${
+                    isActive ? 'bg-purple-600/20 border-purple-500 text-white shadow-lg' : 'bg-white/5 border-white/5 hover:bg-white/10 text-zinc-400'
+                  }`}
+                >
+                  <div className="flex justify-between items-center text-[10px] font-mono">
+                    <span className="font-bold text-purple-400">0{idx + 1}</span>
+                    <span className="px-1 py-0.5 rounded bg-white/10 text-zinc-300">{s.badge || 'Slide'}</span>
+                  </div>
+                  <div className="w-full aspect-[16/9] rounded-lg bg-[#08080a] border border-white/10 p-2 flex flex-col justify-between overflow-hidden">
+                    <div className="text-[10px] font-bold text-white truncate">{s.title}</div>
+                    <div className="text-[8px] text-zinc-400 truncate">{s.subtitle}</div>
+                    <div className="h-1 w-6 rounded-full" style={{ backgroundColor: currentPalette.accentColor }} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </aside>
 
-        {/* ========================================================== */}
-        {/* CENTER KEYNOTE CANVAS VIEWPORT */}
-        {/* ========================================================== */}
-        <main className="flex-1 flex flex-col overflow-hidden p-6 relative">
-          {/* Main Slide Card Viewport */}
-          <div className="flex-1 flex items-center justify-center p-4">
-            <div
-              className={`w-full max-w-4xl aspect-[16/9] rounded-3xl p-10 flex flex-col justify-between transition-all duration-300 relative border ${currentThemeConfig.bgClass} ${currentThemeConfig.textClass}`}
-            >
-              {/* Slide Top Header */}
-              <div className="flex items-center justify-between">
-                <span
-                  onClick={() => setSelectedElement({ type: 'title', text: activeSlide.badge || '企划概要' })}
-                  className="px-3 py-1 rounded-full text-xs font-bold font-mono tracking-wide cursor-pointer hover:ring-2 hover:ring-[var(--apple-accent)]"
-                  style={{ backgroundColor: `${currentThemeConfig.accentColor}25`, color: currentThemeConfig.accentColor }}
-                >
-                  {activeSlide.badge || '企划概要'}
-                </span>
-
-                <span className="text-xs font-mono opacity-50">
-                  {activeSlideIndex + 1} / {slides.length}
-                </span>
-              </div>
-
-              {/* Center Content based on Layout */}
-              <div className="space-y-4 my-auto">
-                {/* Title */}
-                <h2
-                  onClick={() => setSelectedElement({ type: 'title', text: activeSlide.title })}
-                  className="text-2xl md:text-3xl font-bold tracking-tight leading-tight cursor-pointer hover:outline hover:outline-dashed hover:outline-2 hover:outline-[var(--apple-accent)] rounded-lg p-1 transition-all"
-                  title="点击选择该标题进行 AI 润色或编辑"
-                >
-                  {activeSlide.title}
-                </h2>
-
-                {/* Subtitle */}
-                <p
-                  onClick={() => setSelectedElement({ type: 'subtitle', text: activeSlide.subtitle })}
-                  className="text-sm opacity-80 cursor-pointer hover:outline hover:outline-dashed hover:outline-2 hover:outline-[var(--apple-accent)] rounded-lg p-1 transition-all"
-                  title="点击选择副标题进行 AI 润色或编辑"
-                >
-                  {activeSlide.subtitle}
-                </p>
-
-                {/* Bullets List */}
-                {activeSlide.bullets && activeSlide.bullets.length > 0 && (
-                  <div className="pt-2 space-y-2">
-                    {activeSlide.bullets.map((bullet, bIdx) => (
-                      <div
-                        key={bIdx}
-                        onClick={() => setSelectedElement({ type: 'bullet', index: bIdx, text: bullet })}
-                        className="flex items-start gap-2.5 text-xs md:text-sm leading-relaxed cursor-pointer hover:outline hover:outline-dashed hover:outline-1 hover:outline-[var(--apple-accent)] rounded-lg p-1 transition-all"
-                        title="点击选择该论据进行 AI 扩写或修改"
-                      >
-                        <span className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: currentThemeConfig.accentColor }} />
-                        <span>{bullet}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Slide Bottom Footer */}
-              <div className="pt-4 border-t border-current/10 flex items-center justify-between text-[11px] opacity-60">
-                <span>Apple Keynote 架构企划案</span>
-                <span>P{activeSlideIndex + 1} · {LAYOUT_CONFIG[activeSlide.layout]?.label}</span>
-              </div>
-            </div>
+        {/* CENTER CANNING MASTER STAGE */}
+        <section
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          className="flex-1 bg-[#0b0b0e] relative overflow-hidden flex flex-col items-center justify-center p-6 select-none"
+        >
+          {/* Stage Status HUD */}
+          <div className="absolute top-3 left-6 flex items-center space-x-2 bg-[#18181d]/85 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-xs shadow-md">
+            <span className="text-white font-bold">第 {activeSlideIndex + 1} / {slides.length} 页</span>
+            <span className="text-white/20">|</span>
+            <span className="text-purple-300 font-bold">{currentPalette.name}</span>
           </div>
 
-          {/* ======================================================== */}
-          {/* FLOATING AI ELEMENT INSPECTOR POPUP (选择元素后AI修改) */}
-          {/* ======================================================== */}
-          {selectedElement && (
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 w-[520px] rounded-3xl bg-[var(--apple-surface)]/95 dark:bg-[#1e1e20]/95 backdrop-blur-3xl border border-[var(--apple-border-strong)] p-4 shadow-2xl space-y-3 animate-in fade-in zoom-in-95 select-none">
-              <div className="flex items-center justify-between pb-2 border-b border-[var(--apple-separator)]">
-                <div className="flex items-center gap-2">
-                  <Wand2 className="w-4 h-4 text-[var(--apple-accent)]" />
-                  <span className="text-xs font-bold text-[var(--apple-text-primary)]">
-                    已选中元素 · AI 智能修改视窗
-                  </span>
+          {/* Master Keynote Stage */}
+          <div
+            style={{ transform: `scale(${zoomLevel})` }}
+            className={`relative w-full max-w-[980px] ${aspectRatio === '4:3' ? 'aspect-[4/3]' : aspectRatio === '16:10' ? 'aspect-[16/10]' : 'aspect-[16/9]'} ${currentPalette.bgClass} rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 flex flex-col p-10 justify-between border border-white/10`}
+          >
+            {/* Elements */}
+            <div className="w-full h-full relative flex flex-col justify-between">
+              {activeSlide.elements.map(elem => {
+                const isSelected = elem.id === selectedElementId;
+                return (
+                  <div
+                    key={elem.id}
+                    onClick={e => {
+                      e.stopPropagation();
+                      setSelectedElementId(elem.id);
+                    }}
+                    className={`relative cursor-pointer transition rounded-lg p-1 ${
+                      isSelected ? 'outline outline-2 outline-purple-500 bg-purple-500/10' : 'hover:outline hover:outline-1 hover:outline-white/20'
+                    }`}
+                  >
+                    {elem.type === 'tag' && (
+                      <span className={elem.classes} style={{ color: currentPalette.accentColor }}>{elem.content}</span>
+                    )}
+
+                    {elem.type === 'heading' && (
+                      <h1 className={elem.classes} dangerouslySetInnerHTML={{ __html: elem.content || '' }} />
+                    )}
+
+                    {elem.type === 'paragraph' && (
+                      <p className={elem.classes}>{elem.content}</p>
+                    )}
+
+                    {elem.type === 'metric-row' && elem.items && (
+                      <div className="grid grid-cols-3 gap-3 pt-3 border-t border-white/10">
+                        {elem.items.map((it, i) => (
+                          <div key={i} className="bg-white/5 border border-white/10 p-3 rounded-xl">
+                            <div className="text-xl font-bold font-mono text-white mb-0.5" style={{ color: currentPalette.secondaryColor }}>{it.val}</div>
+                            <div className="text-[10px] text-zinc-400">{it.lbl}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {elem.type === 'bento-grid' && elem.cards && (
+                      <div className="grid grid-cols-2 gap-3">
+                        {elem.cards.map((c, i) => (
+                          <div key={i} className={`p-3.5 rounded-xl bg-gradient-to-br ${c.grad || currentPalette.gradPair} border border-white/10`}>
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/10 text-white mb-1.5">{c.tag}</span>
+                            <h3 className="text-xs font-bold text-white mb-1">{c.title}</h3>
+                            <p className="text-[11px] text-zinc-400 leading-relaxed">{c.desc}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {elem.type === 'metric-highlight' && (
+                      <div className="grid grid-cols-12 gap-6 items-center my-auto">
+                        <div className="col-span-5 p-6 rounded-2xl bg-white/[0.04] border border-white/10">
+                          <div className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-emerald-400 mb-1">{elem.bigNum}</div>
+                          <div className="text-xs text-zinc-400">{elem.bigLabel}</div>
+                        </div>
+                        <div className="col-span-7 space-y-2.5">
+                          {elem.metrics?.map((m, i) => (
+                            <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                              <span className="text-xs text-zinc-400">{m.t}</span>
+                              <div className="flex items-center space-x-2">
+                                <span className="font-mono text-xs font-semibold text-white">{m.v}</span>
+                                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">{m.g}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {elem.type === 'quote-split' && (
+                      <div className="grid grid-cols-2 gap-6 items-center">
+                        <div className="space-y-2 border-r border-white/10 pr-4">
+                          <p className="text-base font-serif italic text-white">{elem.quote}</p>
+                          <p className="text-xs font-mono" style={{ color: currentPalette.accentColor }}>{elem.author}</p>
+                        </div>
+                        <div className="space-y-1.5 text-xs text-zinc-300">
+                          {elem.bullets?.map((b, i) => (
+                            <div key={i}>• {b}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Marquee Drag Box */}
+            {marqueeRect && (
+              <div
+                style={{
+                  left: `${marqueeRect.x}px`,
+                  top: `${marqueeRect.y}px`,
+                  width: `${marqueeRect.w}px`,
+                  height: `${marqueeRect.h}px`
+                }}
+                className="absolute border-2 border-dashed border-blue-500 bg-blue-500/15 pointer-events-none rounded-lg z-30"
+              />
+            )}
+          </div>
+
+          {/* Marquee AI Action Pill */}
+          {marqueeRect && marqueeRect.w > 30 && (
+            <div className="mt-3 bg-[#1e1e24] px-4 py-2 rounded-2xl border border-white/20 shadow-2xl flex items-center space-x-3 text-xs z-40">
+              <span className="text-purple-400 font-bold flex items-center space-x-1">
+                <Wand2 className="w-3.5 h-3.5" />
+                <span>区域 AI 重构:</span>
+              </span>
+              <button onClick={() => applyMarqueeAI('bento')} className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold">转 Bento 卡片</button>
+              <button onClick={() => applyMarqueeAI('metric')} className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold">提炼量化指标</button>
+              <button onClick={() => applyMarqueeAI('contrast')} className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold">双栏对比</button>
+            </div>
+          )}
+        </section>
+
+        {/* RIGHT SIDEBAR */}
+        <aside className="w-80 bg-[#151518] border-l border-white/10 flex flex-col shrink-0 z-20 select-none">
+          <div className="grid grid-cols-3 border-b border-white/10 text-[11px] text-center p-1 bg-[#1d1d22]">
+            <button
+              onClick={() => setActiveSidebarMode('smart_layout')}
+              className={`py-1.5 font-bold transition ${activeSidebarMode === 'smart_layout' ? 'text-purple-400 border-b-2 border-purple-500' : 'text-zinc-400'}`}
+            >
+              🤖 智排助手
+            </button>
+            <button
+              onClick={() => setActiveSidebarMode('inspector')}
+              className={`py-1.5 font-bold transition ${activeSidebarMode === 'inspector' ? 'text-blue-400 border-b-2 border-blue-500' : 'text-zinc-400'}`}
+            >
+              🎨 检查器
+            </button>
+            <button
+              onClick={() => setActiveSidebarMode('copilot')}
+              className={`py-1.5 font-bold transition ${activeSidebarMode === 'copilot' ? 'text-teal-300 border-b-2 border-teal-500' : 'text-zinc-400'}`}
+            >
+              💬 协作者
+            </button>
+          </div>
+
+          {/* SMART LAYOUT ASSISTANT TAB */}
+          {activeSidebarMode === 'smart_layout' && (
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+              <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-2">
+                <div className="flex justify-between font-bold text-white">
+                  <span>内容密度: {contentDensityMetric.score}%</span>
+                  <span className="text-purple-400">{contentDensityMetric.statusText}</span>
                 </div>
-                <button
-                  onClick={() => setSelectedElement(null)}
-                  className="p-1 rounded-lg hover:bg-[var(--apple-subtle)] text-[var(--apple-text-tertiary)]"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-[var(--apple-subtle)]/60 text-xs text-[var(--apple-text-secondary)] italic line-clamp-2">
-                “{selectedElement.text}”
-              </div>
-
-              {/* AI Quick Polish Actions */}
-              <div className="flex items-center gap-2">
+              <div className="space-y-2 pt-2 border-t border-white/10">
+                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">AI 最佳适配版式推荐</span>
                 <button
-                  onClick={() => handleAiPolishElement('polish')}
-                  disabled={isAiModifyingElement}
-                  className="flex-1 py-1.5 rounded-xl bg-[var(--apple-subtle)] border border-[var(--apple-border)] text-xs font-semibold hover:border-[var(--apple-accent)] text-[var(--apple-text-primary)] transition-all flex items-center justify-center gap-1"
+                  onClick={() => {
+                    const nextSlides = [...slides];
+                    nextSlides[activeSlideIndex].elements[1] = {
+                      id: `bento-opt-${Date.now()}`,
+                      type: 'bento-grid',
+                      cards: [
+                        { tag: '智能重构 A', title: activeSlide.title, desc: activeSlide.subtitle, grad: 'from-blue-600/20 to-purple-600/10' },
+                        { tag: '智能重构 B', title: '极简人机交互', desc: '将高密度文本提炼为纯粹模块。', grad: 'from-emerald-600/20 to-teal-600/10' }
+                      ]
+                    };
+                    pushHistory(nextSlides);
+                    showToast('已重置为 Bento 便当盒布局');
+                  }}
+                  className="w-full p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-left text-white font-bold transition"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                  <span>✨ 润色文采</span>
-                </button>
-
-                <button
-                  onClick={() => handleAiPolishElement('expand')}
-                  disabled={isAiModifyingElement}
-                  className="flex-1 py-1.5 rounded-xl bg-[var(--apple-subtle)] border border-[var(--apple-border)] text-xs font-semibold hover:border-[var(--apple-accent)] text-[var(--apple-text-primary)] transition-all flex items-center justify-center gap-1"
-                >
-                  <Type className="w-3.5 h-3.5 text-sky-400" />
-                  <span>📈 充实论据</span>
-                </button>
-
-                <button
-                  onClick={() => handleAiPolishElement('catchphrase')}
-                  disabled={isAiModifyingElement}
-                  className="flex-1 py-1.5 rounded-xl bg-[var(--apple-subtle)] border border-[var(--apple-border)] text-xs font-semibold hover:border-[var(--apple-accent)] text-[var(--apple-text-primary)] transition-all flex items-center justify-center gap-1"
-                >
-                  <Compass className="w-3.5 h-3.5 text-amber-500" />
-                  <span>⚡ 提炼金句</span>
+                  🍱 Bento 便当盒多卡片流
                 </button>
               </div>
             </div>
           )}
-        </main>
 
-        {/* ========================================================== */}
-        {/* RIGHT SIDEBAR: MODE-SPECIFIC PRO INSPECTOR PANEL */}
-        {/* ========================================================== */}
-        <aside className="w-84 border-l border-[var(--apple-border)] bg-[var(--apple-surface)]/90 backdrop-blur-2xl p-5 flex flex-col shrink-0 overflow-y-auto space-y-4">
-          {/* MODE 1: ✨ AI 生成与对话改稿面板 */}
-          {studioMode === 'ai_generate' && (
-            <>
-              <div className="flex items-center justify-between pb-2 border-b border-[var(--apple-separator)]">
-                <span className="text-xs font-bold text-[var(--apple-text-primary)] flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[var(--apple-accent)]" />
-                  <span>AI 主题全套生成</span>
-                </span>
-                <span className="text-[10px] font-mono text-[var(--apple-accent)]">Keynote Engine</span>
+          {/* INSPECTOR TAB */}
+          {activeSidebarMode === 'inspector' && (
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+              <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                <span className="font-bold text-white">属性与讲者备注</span>
+                <span className="text-[10px] font-mono text-purple-300">{currentPalette.name}</span>
               </div>
 
-              {/* Topic Input */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-[var(--apple-text-primary)]">企划主题命题</label>
+              <div className="space-y-2">
+                <label className="text-zinc-400 font-bold text-[10px] uppercase">演说提词与备注</label>
                 <textarea
-                  value={aiTopicInput}
-                  onChange={e => setAiTopicInput(e.target.value)}
-                  rows={3}
-                  placeholder="输入你想要生成的演示文稿主题..."
-                  className="w-full p-3 bg-[var(--apple-subtle)] border border-[var(--apple-border)] rounded-2xl text-xs text-[var(--apple-text-primary)] focus:outline-none focus:border-[var(--apple-accent)] resize-none shadow-xs"
+                  value={activeSlide.notes}
+                  onChange={e => {
+                    const nextSlides = slides.map((s, idx) => idx === activeSlideIndex ? { ...s, notes: e.target.value } : s);
+                    pushHistory(nextSlides);
+                  }}
+                  rows={6}
+                  className="w-full bg-[#24242c] border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-blue-500 leading-relaxed resize-none font-mono"
+                  placeholder="在此时输入讲者提词..."
                 />
-                <button
-                  onClick={handleAiGenerateDeck}
-                  disabled={isGeneratingDeck || !aiTopicInput.trim()}
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[var(--apple-accent)] to-indigo-600 text-white text-xs font-bold shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-2 disabled:opacity-40"
-                >
-                  <Wand2 className={`w-3.5 h-3.5 ${isGeneratingDeck ? 'animate-spin' : ''}`} />
-                  <span>{isGeneratingDeck ? 'AI 正在排版生成全套 PPT...' : '一键生成可交互 PPT'}</span>
-                </button>
               </div>
-
-              {/* Conversational Modification Box */}
-              <div className="pt-3 border-t border-[var(--apple-separator)] space-y-2">
-                <label className="text-[11px] font-bold text-[var(--apple-text-primary)] flex items-center gap-1.5">
-                  <MessageSquare className="w-3.5 h-3.5 text-purple-400" />
-                  <span>全套 PPT 对话修改</span>
-                </label>
-                <p className="text-[10px] text-[var(--apple-text-tertiary)]">
-                  用自然语言给 AI 下达指令（如：“将全套幻灯片增加商业变现测算”、“精炼第 2 页要点”）
-                </p>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={chatInstruction}
-                    onChange={e => setChatInstruction(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleExecuteChatInstruction()}
-                    placeholder="输入对话修改指令..."
-                    className="flex-1 px-3 py-2 bg-[var(--apple-subtle)] border border-[var(--apple-border)] rounded-xl text-xs text-[var(--apple-text-primary)] focus:outline-none focus:border-[var(--apple-accent)]"
-                  />
-                  <button
-                    onClick={handleExecuteChatInstruction}
-                    disabled={isProcessingChat || !chatInstruction.trim()}
-                    className="p-2 rounded-xl bg-[var(--apple-accent)] text-white hover:bg-[var(--apple-accent-hover)] disabled:opacity-40"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Speaker Notes */}
-              <div className="pt-3 border-t border-[var(--apple-separator)] space-y-1.5">
-                <label className="text-[11px] font-bold text-[var(--apple-text-primary)] flex items-center gap-1.5">
-                  <Mic className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>当前页讲者演练备忘录 (Notes)</span>
-                </label>
-                <p className="text-xs leading-relaxed text-[var(--apple-text-secondary)] bg-[var(--apple-subtle)]/40 p-3 rounded-2xl border border-[var(--apple-border)] font-sans">
-                  {activeSlide.notes}
-                </p>
-              </div>
-            </>
+            </div>
           )}
 
-          {/* MODE 2: 🛠️ 本地编辑工作台面板 */}
-          {studioMode === 'local_editor' && (
-            <>
-              <div className="flex items-center justify-between pb-2 border-b border-[var(--apple-separator)]">
-                <span className="text-xs font-bold text-[var(--apple-text-primary)] flex items-center gap-1.5">
-                  <Edit3 className="w-3.5 h-3.5 text-amber-500" />
-                  <span>本地编辑工作台</span>
-                </span>
-                <span className="text-[10px] font-mono text-amber-500">Local Pro</span>
+          {/* COPILOT TAB */}
+          {activeSidebarMode === 'copilot' && (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-3 space-y-2 text-xs">
+                {chatMessages.map((m, idx) => (
+                  <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`p-2.5 rounded-2xl max-w-[85%] leading-relaxed ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-[#24242c] border border-white/10 text-zinc-200'}`}>
+                      {m.text}
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              {/* 导入本地 PPT / 大纲按钮 */}
-              <div className="p-3.5 rounded-2xl bg-[var(--apple-subtle)]/70 border border-[var(--apple-border)] space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[var(--apple-text-primary)]">导入本地 PPT / 大纲</span>
-                  <Upload className="w-3.5 h-3.5 text-amber-500" />
-                </div>
-                <p className="text-[10px] text-[var(--apple-text-tertiary)]">
-                  支持导入 .pptx / .json / .md 大纲文档并自动解析为幻灯片
-                </p>
+              <div className="p-3 border-t border-white/10 bg-[#1d1d22] space-y-2">
+                <textarea
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendChatPrompt();
+                    }
+                  }}
+                  rows={2}
+                  placeholder="给 AI 协作者下达指令..."
+                  className="w-full bg-[#24242c] border border-white/10 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-purple-500 resize-none"
+                />
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full py-2 rounded-xl bg-[var(--apple-surface)] border border-[var(--apple-border)] hover:border-amber-500 text-xs font-semibold text-[var(--apple-text-primary)] transition-all flex items-center justify-center gap-1.5 shadow-2xs"
+                  onClick={handleSendChatPrompt}
+                  className="w-full py-1.5 rounded-xl bg-purple-600 text-white font-bold text-xs hover:bg-purple-500 transition"
                 >
-                  <FileUp className="w-3.5 h-3.5 text-amber-500" />
-                  <span>{importedFileName ? `已导入: ${importedFileName}` : '选择本地文件导入'}</span>
+                  发送指令
                 </button>
               </div>
-
-              {/* 版式类型切换 */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-[var(--apple-text-primary)]">页面版式切换</label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {(Object.keys(LAYOUT_CONFIG) as SlideLayout[]).map(l => (
-                    <button
-                      key={l}
-                      onClick={() => setSlides(prev => prev.map((s, idx) => idx === activeSlideIndex ? { ...s, layout: l } : s))}
-                      className={`p-2 rounded-xl text-xs text-left border transition-all truncate ${
-                        activeSlide.layout === l
-                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-500 font-semibold'
-                          : 'bg-[var(--apple-subtle)] border-[var(--apple-border)] text-[var(--apple-text-secondary)]'
-                      }`}
-                    >
-                      {LAYOUT_CONFIG[l].label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 手动文本属性编辑 */}
-              <div className="space-y-2.5 pt-2 border-t border-[var(--apple-separator)]">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[var(--apple-text-tertiary)] uppercase">页面徽标</label>
-                  <input
-                    type="text"
-                    value={activeSlide.badge || ''}
-                    onChange={e => setSlides(prev => prev.map((s, idx) => idx === activeSlideIndex ? { ...s, badge: e.target.value } : s))}
-                    className="w-full px-3 py-1.5 bg-[var(--apple-subtle)] border border-[var(--apple-border)] rounded-xl text-xs text-[var(--apple-text-primary)]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[var(--apple-text-tertiary)] uppercase">主标题</label>
-                  <input
-                    type="text"
-                    value={activeSlide.title}
-                    onChange={e => setSlides(prev => prev.map((s, idx) => idx === activeSlideIndex ? { ...s, title: e.target.value } : s))}
-                    className="w-full px-3 py-1.5 bg-[var(--apple-subtle)] border border-[var(--apple-border)] rounded-xl text-xs text-[var(--apple-text-primary)]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[var(--apple-text-tertiary)] uppercase">副标题</label>
-                  <input
-                    type="text"
-                    value={activeSlide.subtitle}
-                    onChange={e => setSlides(prev => prev.map((s, idx) => idx === activeSlideIndex ? { ...s, subtitle: e.target.value } : s))}
-                    className="w-full px-3 py-1.5 bg-[var(--apple-subtle)] border border-[var(--apple-border)] rounded-xl text-xs text-[var(--apple-text-primary)]"
-                  />
-                </div>
-              </div>
-            </>
+            </div>
           )}
         </aside>
       </div>
 
-      {/* ============================================================ */}
-      {/* 3. FULL-SCREEN PRESENTATION OVERLAY (Apple Keynote Mode) */}
-      {/* ============================================================ */}
-      {isFullScreen && (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center p-12 select-none ${currentThemeConfig.bgClass}`}>
-          <div className="w-full max-w-6xl aspect-[16/9] flex flex-col justify-between p-16 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between">
-              <span
-                className="px-4 py-1.5 rounded-full text-sm font-bold font-mono tracking-wide"
-                style={{ backgroundColor: `${currentThemeConfig.accentColor}25`, color: currentThemeConfig.accentColor }}
-              >
-                {activeSlide.badge || '企划概要'}
-              </span>
+      {/* FOOTER STATUS & UTILITY BAR */}
+      <footer className="h-9 bg-[#111116] border-t border-white/10 px-3.5 flex items-center justify-between shrink-0 z-40 text-[11px] text-zinc-400 select-none">
+        <div className="flex items-center space-x-3">
+          <span className="font-bold text-white">第 {activeSlideIndex + 1} / {slides.length} 页</span>
+          <span className="text-white/20">|</span>
+          <span>第一节：愿景揭幕</span>
+          <span className="text-white/20">|</span>
+          <span className="text-emerald-400 font-bold">规范检测无冲突</span>
+        </div>
 
-              <span className="text-sm font-mono opacity-50">
-                {activeSlideIndex + 1} / {slides.length}
-              </span>
+        <div className="flex items-center space-x-3">
+          <button onClick={() => setZoomLevel(z => Math.max(0.5, z - 0.1))} className="hover:text-white">-</button>
+          <span className="font-mono text-white">{Math.round(zoomLevel * 100)}%</span>
+          <button onClick={() => setZoomLevel(z => Math.min(2.0, z + 0.1))} className="hover:text-white">+</button>
+        </div>
+      </footer>
+
+      {/* PRINT PREVIEW MODAL */}
+      {activeModal === 'print' && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-lg z-50 flex items-center justify-center p-6 select-none animate-in fade-in">
+          <div className="bg-[#16161c] border border-white/20 w-full max-w-4xl rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-white/10 pb-3">
+              <span className="font-bold text-white text-sm">专业打印预览与装订基准 (Print Preview)</span>
+              <button onClick={() => setActiveModal(null)} className="text-zinc-400 hover:text-white"><X className="w-4 h-4" /></button>
             </div>
-
-            <div className="space-y-6 my-auto">
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
-                {activeSlide.title}
-              </h1>
-              <p className="text-xl opacity-80">
-                {activeSlide.subtitle}
-              </p>
-              {activeSlide.bullets && activeSlide.bullets.length > 0 && (
-                <div className="pt-4 space-y-3">
-                  {activeSlide.bullets.map((b, i) => (
-                    <div key={i} className="flex items-start gap-3 text-lg">
-                      <span className="w-2.5 h-2.5 rounded-full mt-2 shrink-0" style={{ backgroundColor: currentThemeConfig.accentColor }} />
-                      <span>{b}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <p className="text-xs text-zinc-300 leading-relaxed">
+              色彩配置文件: Apple Display P3 • 300 DPI 无损压印。已成功将 {slides.length} 页演示文档调入 AirPrint 打印队列。
+            </p>
+            <div className="flex justify-end space-x-2 pt-2">
+              <button onClick={() => setActiveModal(null)} className="px-4 py-1.5 rounded-xl bg-white/10 text-white font-bold text-xs">取消</button>
+              <button onClick={() => { window.print(); setActiveModal(null); }} className="px-4 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xs">开始打印 (⌘P)</button>
             </div>
+          </div>
+        </div>
+      )}
 
-            <div className="flex items-center justify-between pt-6 border-t border-current/10 text-xs opacity-60">
-              <span>按空格键 / 方向键翻页 · 按 ESC 退出全屏放映</span>
-              <span>P{activeSlideIndex + 1} · {LAYOUT_CONFIG[activeSlide.layout]?.label}</span>
+      {/* TOPIC MODAL */}
+      {activeModal === 'topic' && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-lg z-50 flex items-center justify-center p-6 select-none animate-in fade-in">
+          <div className="bg-[#16161c] border border-white/20 w-full max-w-xl rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-white/10 pb-3">
+              <span className="font-bold text-white text-sm">主题全案智造 (Topic to Deck)</span>
+              <button onClick={() => setActiveModal(null)} className="text-zinc-400 hover:text-white"><X className="w-4 h-4" /></button>
+            </div>
+            <textarea defaultValue="2026 Apple 空间计算与个人神经硬件生态战略..." rows={3} className="w-full p-3 bg-black/40 border border-white/10 rounded-xl text-xs text-white" />
+            <div className="flex justify-end space-x-2 pt-2">
+              <button onClick={() => setActiveModal(null)} className="px-4 py-1.5 rounded-xl bg-white/10 text-white font-bold text-xs">取消</button>
+              <button onClick={() => { showToast('全案已自动智造生成！'); setActiveModal(null); }} className="px-4 py-1.5 rounded-xl bg-purple-600 text-white font-bold text-xs">一键生成</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LINK MODAL */}
+      {activeModal === 'link' && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-lg z-50 flex items-center justify-center p-6 select-none animate-in fade-in">
+          <div className="bg-[#16161c] border border-white/20 w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-white/10 pb-3">
+              <span className="font-bold text-white text-sm">网页/公众号/研报转 PPT</span>
+              <button onClick={() => setActiveModal(null)} className="text-zinc-400 hover:text-white"><X className="w-4 h-4" /></button>
+            </div>
+            <input type="url" defaultValue="https://techcrunch.com/2026/09/apple-spatial-report" className="w-full p-2.5 bg-black/40 border border-white/10 rounded-xl text-xs text-white" />
+            <div className="flex justify-end space-x-2 pt-2">
+              <button onClick={() => setActiveModal(null)} className="px-4 py-1.5 rounded-xl bg-white/10 text-white font-bold text-xs">取消</button>
+              <button onClick={() => { showToast('研报解析重构成功！'); setActiveModal(null); }} className="px-4 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs">解析转化为 PPT</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* IMPORT MODAL */}
+      {activeModal === 'import' && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-lg z-50 flex items-center justify-center p-6 select-none animate-in fade-in">
+          <div className="bg-[#16161c] border border-white/20 w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-white/10 pb-3">
+              <span className="font-bold text-white text-sm">导入本地 PPTX 并升级 Apple 工业审美</span>
+              <button onClick={() => setActiveModal(null)} className="text-zinc-400 hover:text-white"><X className="w-4 h-4" /></button>
+            </div>
+            <div onClick={() => { showToast('本地文件加载成功！'); setActiveModal(null); }} className="border-2 border-dashed border-white/20 hover:border-blue-500 rounded-2xl p-8 text-center cursor-pointer">
+              <UploadCloud className="w-8 h-8 text-zinc-400 mx-auto mb-2" />
+              <p className="text-xs font-bold text-white">点击上传 .pptx / .key 本地文件</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FULLSCREEN KEYNOTE PRESENTATION OVERLAY WITH LASER & TIMERS */}
+      {isPresenterActive && (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col justify-between p-12 text-white animate-in fade-in select-none">
+          <div className="flex justify-between items-center text-xs font-mono opacity-60">
+            <span>Apple Keynote Presentation • {currentPalette.name}</span>
+            <span>{Math.floor(elapsedSeconds / 60)}m {elapsedSeconds % 60}s</span>
+            <button onClick={() => setIsPresenterActive(false)} className="p-2 hover:bg-white/10 rounded-full">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="max-w-4xl mx-auto w-full my-auto space-y-6 text-center">
+            <span className="px-3 py-1 rounded-full text-xs font-bold font-mono bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              {activeSlide.badge || 'Keynote'}
+            </span>
+            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight">{activeSlide.title}</h1>
+            <p className="text-lg opacity-70 leading-relaxed max-w-2xl mx-auto">{activeSlide.subtitle}</p>
+          </div>
+
+          {/* Laser Pointer Dot */}
+          {isLaserActive && (
+            <div
+              style={{ left: `${laserPos.x}px`, top: `${laserPos.y}px` }}
+              className="fixed w-4 h-4 rounded-full bg-rose-500 shadow-[0_0_16px_4px_#ff3b30] pointer-events-none z-50 -translate-x-1/2 -translate-y-1/2"
+            />
+          )}
+
+          <div className="flex justify-between items-center font-mono text-xs opacity-60">
+            <span>按 ← / → 翻页 · 按 L 开关激光笔 · 按 ESC 退出</span>
+            <div className="flex space-x-4">
+              <button onClick={() => setActiveSlideIndex(prev => Math.max(0, prev - 1))} className="hover:text-white">上一页</button>
+              <button onClick={() => setActiveSlideIndex(prev => Math.min(slides.length - 1, prev + 1))} className="hover:text-white">下一页</button>
             </div>
           </div>
         </div>

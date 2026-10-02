@@ -172,7 +172,7 @@ export default function App() {
           {activeTab === 'ai_search' && <AISearchView />}
           {activeTab === 'ai_commands' && <AICommandsView />}
           {activeTab === 'ai_analysis' && <AIAnalysisView onSaveToMaterial={handleSaveToMaterial} />}
-          {activeTab === 'agents' && <AgentStudio />}
+          {activeTab === 'agents' && <AgentStudio onSaveToMaterial={handleSaveToMaterial} />}
           {activeTab === 'research' && <ResearchView onSaveToMaterial={handleSaveToMaterial} />}
           {activeTab === 'novel' && <NovelStudio />}
           {activeTab === 'notebook' && <NotebookView />}
